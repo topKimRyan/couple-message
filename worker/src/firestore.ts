@@ -63,6 +63,8 @@ export class Firestore {
     projectId: string,
     private readonly accessToken: () => Promise<string>,
     private readonly fetchFn: typeof fetch = fetch,
+    /** 에뮬레이터 시험용으로만 바꾼다. */
+    private readonly baseUrl = 'https://firestore.googleapis.com',
   ) {
     this.root = `projects/${projectId}/databases/(default)/documents`;
   }
@@ -75,7 +77,7 @@ export class Firestore {
   }
 
   async get(path: string): Promise<Doc | null> {
-    const res = await this.request(`https://firestore.googleapis.com/v1/${this.root}/${path}`);
+    const res = await this.request(`${this.baseUrl}/v1/${this.root}/${path}`);
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`firestore get ${path}: ${res.status} ${await res.text()}`);
     const data = (await res.json()) as { fields?: Record<string, Value>; updateTime: string };
@@ -91,7 +93,7 @@ export class Firestore {
         ...(w.precondition && { currentDocument: w.precondition }),
       })),
     };
-    const res = await this.request(`https://firestore.googleapis.com/v1/${this.root}:commit`, {
+    const res = await this.request(`${this.baseUrl}/v1/${this.root}:commit`, {
       method: 'POST',
       body: JSON.stringify(body),
     });

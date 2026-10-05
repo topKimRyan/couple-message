@@ -50,8 +50,10 @@ describe('deriveRoomKeys', () => {
     const [a, b] = await Promise.all([deriveRoomKeys(minsu, 1000), deriveRoomKeys(jieun, 1000)]);
     expect(a.roomId).toBe(b.roomId);
     expect(a.roomId).toMatch(/^[0-9a-f]{64}$/);
-    const sealed = await seal(a.encKey, { text: '잘 지내?' });
-    expect(await open(b.encKey, sealed)).toEqual({ text: '잘 지내?' });
+    const sealed = await seal(a.encKey, { text: '잘 지내?' }, 'letters/x/a');
+    expect(sealed.iv).toHaveLength(16);
+    expect(await open(b.encKey, sealed, 'letters/x/a')).toEqual({ text: '잘 지내?' });
+    await expect(open(b.encKey, sealed, 'letters/x/b')).rejects.toThrow();
   });
 
   it('사귄 날이 다르면 다른 방', async () => {

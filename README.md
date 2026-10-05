@@ -13,12 +13,13 @@
 ```
 web/       PWA (로그인, 방 화면) — Vite + TypeScript
 worker/    Cloudflare Worker (/create, /login: 방 확인 후 Firebase custom token 발급)
+rules-test/ 보안 규칙 테스트 (Firestore 에뮬레이터)
 firestore.rules, firebase.json
 ```
 
 ## 진행 상황
 
 - [x] 1단계 뼈대: 키 파생, 로그인 화면, 방 만들기·입장
-- [ ] 2단계 연락처 칸, 안부 편지, 보안 규칙
+- [x] 2단계 연락처 칸, 안부 편지, 졸업 디데이, 보안 규칙
 - [ ] 3단계 PWA, 웹 푸시, 새 기기 알림, 잠금
 - [ ] 4단계 운영자 화면

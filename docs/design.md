@@ -68,6 +68,8 @@ side   = (myPair == p1) ? "a" : "b"
 - salt에 버전(`v1`)을 넣어 두어, 나중에 알고리즘을 바꾸면 v2 방으로 이전할 수 있다.
 - PBKDF2 60만 회는 휴대폰에서 1초 안팎. 두 키를 병렬로 계산하고 로딩 표시를 띄운다.
 - 암호화: 문서마다 12바이트 랜덤 IV, 저장 형식 `{ct: base64, iv: base64}`. 평문은 JSON.
+- 암호문이 놓이는 자리(`contacts/a`, `settings`, `letters/{편지 ID}/{보낸 쪽}`)를 AES-GCM 추가 인증 데이터로 묶는다. 서버에서 암호문을 다른 칸으로 옮기거나 보낸 쪽을 바꾸면 복호화가 실패한다.
+- 평문 형식: 연락처 `{text}`(500자), 편지 `{text}`(1000자), 방 설정 `{graduation: "YYYY-MM-DD" | null}`.
 - 로그인 후 `encKey`는 추출 불가(non-extractable) `CryptoKey`로 IndexedDB에 보관해 재방문 시 재입력이 필요 없게 한다. "이 기기에서 나가기"로 삭제한다.
 - 단위 테스트: 두 사람이 각자 입력한 경우 같은 roomId·반대 side가 나오는지, 공백·대소문자·한글 조합형 차이를 흡수하는지 고정 벡터로 검증한다.
 
@@ -92,7 +94,9 @@ function inRoom(roomId) { return request.auth != null && request.auth.token.room
 
 - `rooms` 컬렉션 `list`는 운영자만 허용 → 다른 방의 존재 여부가 드러나지 않는다.
 - 운영자는 `rooms/{id}` 메타와 `invites`만 본다. 연락처·편지는 암호문이라 내용을 볼 수 없다.
-- `lastLetterAt`은 편지를 쓴 클라이언트가 같은 batch에서 갱신(규칙에서 `request.time`과 같은지 검사).
+- `lastLetterAt`은 편지를 쓴 클라이언트가 같은 batch에서 갱신한다. 규칙이 `getAfter`로 이를 강제하므로 운영자 화면의 "마지막 편지"가 정확하다.
+- 기기에는 Firestore 오프라인 캐시(IndexedDB)를 켜서 다시 열 때 읽기 횟수를 아낀다. 캐시에는 암호문만 있고, "이 기기에서 나가기"로 함께 지운다.
+- 편지는 최근 50통씩 불러오고 "이전 편지 더 보기"로 늘린다.
 - 방 삭제: 하위 컬렉션이 자동 삭제되지 않으므로 Worker `POST /admin/delete-room`이 letters·devices를 지운 뒤 방 문서를 지운다.
 
 ## 4. Worker 엔드포인트

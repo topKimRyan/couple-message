@@ -92,13 +92,25 @@ function fromBase64(s: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 }
 
-export async function seal(key: CryptoKey, value: unknown): Promise<Sealed> {
+/**
+ * context는 이 암호문이 놓일 자리(예: "contacts/a", "letters/{id}/b").
+ * AES-GCM 추가 인증 데이터로 묶어서, 서버에서 암호문을 다른 자리로 옮기면 열리지 않게 한다.
+ */
+export async function seal(key: CryptoKey, value: unknown, context: string): Promise<Sealed> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(JSON.stringify(value)));
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, additionalData: encoder.encode(context) },
+    key,
+    encoder.encode(JSON.stringify(value)),
+  );
   return { ct: toBase64(new Uint8Array(ct)), iv: toBase64(iv) };
 }
 
-export async function open<T>(key: CryptoKey, sealed: Sealed): Promise<T> {
-  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromBase64(sealed.iv) }, key, fromBase64(sealed.ct));
+export async function open<T>(key: CryptoKey, sealed: Sealed, context: string): Promise<T> {
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: fromBase64(sealed.iv), additionalData: encoder.encode(context) },
+    key,
+    fromBase64(sealed.ct),
+  );
   return JSON.parse(new TextDecoder().decode(plain)) as T;
 }

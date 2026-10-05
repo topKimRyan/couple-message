@@ -1,16 +1,74 @@
 rules_version = '2';
 
-// docs/design.md §3. 1단계: 자기 방 문서 읽기만 연다.
-// 나머지(invites, devices, lockouts, 다른 방)는 기본값으로 모두 거부된다.
+// docs/design.md §3.
+// 커플은 Worker가 발급한 custom token(claims: roomId, side)으로만 들어온다.
+// 방 문서 생성·삭제, invites, devices, lockouts 는 Worker(서비스 계정)만 다루므로
+// 여기서는 열지 않는다. 운영자 접근은 4단계에서 추가한다.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Worker가 발급한 custom token 에 들어 있는 방 ID.
     function inRoom(roomId) {
       return request.auth != null && request.auth.token.roomId == roomId;
     }
 
+    function mySide() {
+      return request.auth.token.side;
+    }
+
+    // web/src/crypto.ts seal() 결과. iv 12바이트 = base64 16자.
+    function isSealed(v, maxCt) {
+      return v.ct is string && v.ct.size() <= maxCt
+        && v.iv is string && v.iv.size() == 16;
+    }
+
+    // 연락처 칸, 방 설정: {ct, iv, updatedAt}
+    function isSealedEntry(v, maxCt) {
+      return v is map
+        && v.keys().hasOnly(['ct', 'iv', 'updatedAt'])
+        && v.keys().hasAll(['ct', 'iv', 'updatedAt'])
+        && isSealed(v, maxCt)
+        && v.updatedAt == request.time;
+    }
+
     match /rooms/{roomId} {
       allow get: if inRoom(roomId);
+      allow update: if inRoom(roomId) && validRoomUpdate();
+
+      function validRoomUpdate() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        return changed.hasOnly(['contacts', 'settings', 'lastLetterAt'])
+          && (!changed.hasAny(['contacts']) || validContacts())
+          && (!changed.hasAny(['settings']) || isSealedEntry(request.resource.data.settings, 2000))
+          && (!changed.hasAny(['lastLetterAt']) || request.resource.data.lastLetterAt == request.time);
+      }
+
+      // 자기 칸만 고칠 수 있다.
+      function validContacts() {
+        let after = request.resource.data.contacts;
+        return after is map
+          && after.diff(resource.data.get('contacts', {})).affectedKeys().hasOnly([mySide()])
+          && isSealedEntry(after[mySide()], 4000);
+      }
+
+      match /letters/{letterId} {
+        allow get, list: if inRoom(roomId);
+
+        // 보낸 쪽은 토큰의 side 와 같아야 하고, 같은 batch 에서 방의 lastLetterAt 도 갱신해야 한다.
+        allow create: if inRoom(roomId)
+          && request.resource.data.keys().hasOnly(['from', 'ct', 'iv', 'sentAt', 'readAt'])
+          && request.resource.data.keys().hasAll(['from', 'ct', 'iv', 'sentAt', 'readAt'])
+          && request.resource.data.from == mySide()
+          && isSealed(request.resource.data, 12000)
+          && request.resource.data.sentAt == request.time
+          && request.resource.data.readAt == null
+          && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.lastLetterAt == request.time;
+
+        // 받는 쪽이 읽음 표시를 한 번만 남긴다. 편지 수정·삭제는 불가.
+        allow update: if inRoom(roomId)
+          && resource.data.from != mySide()
+          && resource.data.readAt == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
+          && request.resource.data.readAt == request.time;
+      }
     }
   }
 }

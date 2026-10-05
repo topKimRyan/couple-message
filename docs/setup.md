@@ -45,18 +45,40 @@ Firestore 콘솔에서 직접 만든다.
 
 ## 로컬 개발
 
+### Firebase 프로젝트 없이 (에뮬레이터, Java 11 이상 필요)
+
+```sh
+npm run emulators                 # 터미널 1: Auth·Firestore 에뮬레이터
+npm run dev:emulator -w worker    # 터미널 2: 에뮬레이터용 Worker, 초대 코드 DEVINVITE
+npm run dev -w web                # 터미널 3: http://localhost:5173
+```
+
+`web/.env.local`:
+
+```
+VITE_FIREBASE_API_KEY=fake-api-key
+VITE_FIREBASE_PROJECT_ID=demo-couple-mailbox
+VITE_FIREBASE_AUTH_DOMAIN=demo-couple-mailbox.firebaseapp.com
+VITE_FIREBASE_APP_ID=1:1:web:1
+VITE_WORKER_URL=http://localhost:8787
+VITE_USE_EMULATORS=true
+```
+
+두 사람을 시험하려면 일반 창과 시크릿 창을 하나씩 쓰면 된다. 에뮬레이터를 끄면 데이터는 사라진다.
+
+### 실제 Firebase 프로젝트로
+
 ```sh
 cp worker/.dev.vars.example worker/.dev.vars   # 서비스 계정 JSON을 한 줄로
 npm run dev -w worker                          # http://localhost:8787
 npm run dev -w web                             # http://localhost:5173
 ```
 
-로컬에서도 실제 Firebase 프로젝트를 쓴다. 시험용 방은 콘솔에서 지우면 된다.
-
 ## 확인
 
 ```sh
-npm test         # crypto 고정 벡터, Worker 핸들러, JWT 서명
+npm test            # crypto 고정 벡터, Worker 핸들러, JWT 서명
+npm run test:rules  # 보안 규칙 (Firestore 에뮬레이터, Java 필요)
 npm run typecheck
 ```
 

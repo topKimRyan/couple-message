@@ -278,3 +278,12 @@ button.link.inline {
 .footer .hint {
   margin-top: 8px;
 }
+
+.notice {
+  margin-bottom: 20px;
+  border-color: var(--accent);
+}
+
+.notice-text {
+  margin: 0;
+}

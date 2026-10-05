@@ -1,10 +1,12 @@
 // 로컬 개발용: Firebase 에뮬레이터를 쓰는 Worker. 실제 handlers/store 코드를 그대로 쓰고,
-// custom token 만 서명 없이 만든다(Auth 에뮬레이터는 서명을 검사하지 않음).
+// custom token 은 서명 없이 만들고(Auth 에뮬레이터는 서명을 검사하지 않음), 에뮬레이터가 주는
+// 서명 없는 ID 토큰은 내용만 확인한다. 푸시는 실제로 보내지 않고 콘솔에 찍는다.
 // 실행: npm run dev:emulator -w worker  (먼저 루트에서 npm run emulators)
 import { createServer } from 'node:http';
 import { Firestore } from '../src/firestore';
 import { base64url } from '../src/google-auth';
 import { handle, type Deps } from '../src/handlers';
+import { checkRoomClaims, decodeJwt } from '../src/id-token';
 import { FirestoreStore } from '../src/store';
 
 const PROJECT = 'demo-couple-mailbox';
@@ -28,6 +30,16 @@ const deps: Deps = {
     };
     return `${base64url(JSON.stringify({ alg: 'none', typ: 'JWT' }))}.${base64url(JSON.stringify(payload))}.`;
   },
+  verifyIdToken: async (token) => {
+    const decoded = decodeJwt(token);
+    return decoded && checkRoomClaims(decoded.payload, PROJECT, Date.now());
+  },
+  sendPush: async (fcmToken, message) => {
+    console.log(`[push] ${fcmToken} ${JSON.stringify(message)}`);
+    return 'ok';
+  },
+  hashIp: async (bucket) => bucket.replace(/[^0-9a-zA-Z]/g, '_'),
+  defer: (work) => void work.catch((err) => console.error(err)),
   allowedOrigins: ['http://localhost:5173'],
 };
 
@@ -37,7 +49,7 @@ createServer(async (req, res) => {
   const response = await handle(
     new Request(`http://localhost:8787${req.url}`, {
       method: req.method,
-      headers: req.headers as Record<string, string>,
+      headers: { ...(req.headers as Record<string, string>), 'cf-connecting-ip': req.socket.remoteAddress ?? '' },
       body: req.method === 'POST' ? Buffer.concat(chunks) : undefined,
     }),
     deps,

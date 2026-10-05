@@ -5,6 +5,7 @@ import type { Session } from '../session';
 import { createContacts } from '../ui/contacts';
 import { el } from '../ui/dom';
 import { createLetters } from '../ui/letters';
+import { createNotice } from '../ui/notice';
 
 interface Options {
   onLeave: (notice?: string) => void;
@@ -71,6 +72,7 @@ export function renderRoom(root: HTMLElement, session: Session, { onLeave }: Opt
   }
 
   const status = el('p', { className: 'message', role: 'alert' });
+  const banner = createNotice(session);
   const contacts = createContacts(session);
   const letters = createLetters(session, {
     onMore: () => {
@@ -83,6 +85,7 @@ export function renderRoom(root: HTMLElement, session: Session, { onLeave }: Opt
     el('header', { className: 'brand' }, el('h1', { textContent: '우리 우체통' }), dday, gradToggle),
     gradForm,
     status,
+    banner.root,
     contacts.root,
     letters.root,
     el(
@@ -157,6 +160,7 @@ export function renderRoom(root: HTMLElement, session: Session, { onLeave }: Opt
     left = true;
     unsubRoom();
     unsubLetters?.();
+    banner.stop();
     document.removeEventListener('visibilitychange', onVisible);
     onLeave(notice);
   }

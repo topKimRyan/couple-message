@@ -1,4 +1,5 @@
 import type { Side } from './crypto';
+import { auth } from './firebase';
 
 export class ApiError extends Error {
   constructor(
@@ -9,12 +10,14 @@ export class ApiError extends Error {
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(path: string, body: unknown, idToken?: string): Promise<T> {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  if (idToken) headers.authorization = `Bearer ${idToken}`;
   let res: Response;
   try {
     res = await fetch(`${import.meta.env.VITE_WORKER_URL}${path}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers,
       body: JSON.stringify(body),
     });
   } catch {
@@ -31,6 +34,20 @@ export function createRoom(body: { inviteCode: string; roomId: string; side: Sid
 
 export function login(body: { roomId: string; side: Side; deviceId: string }) {
   return post<{ token: string }>('/login', body);
+}
+
+export function registerPush(idToken: string, body: { deviceId: string; fcmToken: string }) {
+  return post<{ ok: true }>('/register-push', body, idToken);
+}
+
+/** 상대 기기에 푸시를 보내 달라고 한다. 알림은 덤이므로 실패해도 조용히 넘어간다. */
+export async function notify(type: 'letter' | 'contacts'): Promise<void> {
+  try {
+    const user = auth.currentUser;
+    if (user) await post('/notify', { type }, await user.getIdToken());
+  } catch (err) {
+    console.warn('notify', err);
+  }
 }
 
 /** Worker가 발급하는 Firebase uid와 같은 규칙. worker/src/handlers.ts 참고. */

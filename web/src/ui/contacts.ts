@@ -1,3 +1,4 @@
+import { notify } from '../api';
 import type { Side } from '../crypto';
 import { relativeTime } from '../format';
 import { CONTACT_MAX, saveContact, type ContactView, type RoomView } from '../room-data';
@@ -67,6 +68,7 @@ export function createContacts(session: Session) {
       message.textContent = '';
       try {
         await saveContact(session, textarea.value.trim());
+        void notify('contacts');
         editing = false;
         renderMine();
       } catch {

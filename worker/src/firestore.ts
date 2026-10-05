@@ -48,7 +48,7 @@ export type Precondition = { exists: boolean } | { updateTime: string };
 export interface Write {
   path: string;
   fields: Record<string, FieldValue>;
-  /** 지정하면 이 필드만 바꾸고 나머지는 둔다. 없으면 문서 전체를 덮어쓴다. */
+  /** 지정하면 이 필드만 바꾸고 나머지는 둔다. mask 에 있는데 fields 에 없는 필드는 지워진다. 없으면 문서 전체를 덮어쓴다. */
   mask?: string[];
   precondition?: Precondition;
 }
@@ -82,6 +82,18 @@ export class Firestore {
     if (!res.ok) throw new Error(`firestore get ${path}: ${res.status} ${await res.text()}`);
     const data = (await res.json()) as { fields?: Record<string, Value>; updateTime: string };
     return { fields: decodeFields(data.fields ?? {}), updateTime: data.updateTime };
+  }
+
+  /** 하위 컬렉션의 문서 목록. 방의 기기처럼 작은 컬렉션에만 쓴다. */
+  async list(path: string): Promise<(Doc & { id: string })[]> {
+    const res = await this.request(`${this.baseUrl}/v1/${this.root}/${path}?pageSize=300`);
+    if (!res.ok) throw new Error(`firestore list ${path}: ${res.status} ${await res.text()}`);
+    const data = (await res.json()) as { documents?: { name: string; fields?: Record<string, Value>; updateTime: string }[] };
+    return (data.documents ?? []).map((d) => ({
+      id: d.name.slice(d.name.lastIndexOf('/') + 1),
+      fields: decodeFields(d.fields ?? {}),
+      updateTime: d.updateTime,
+    }));
   }
 
   /** 모든 쓰기를 한꺼번에 적용하거나 하나도 적용하지 않는다. */

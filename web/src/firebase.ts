@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { browserLocalPersistence, connectAuthEmulator, indexedDBLocalPersistence, initializeAuth } from 'firebase/auth';
 import {
   connectFirestoreEmulator,
   initializeFirestore,
@@ -17,7 +17,8 @@ export const app = initializeApp({
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
 });
 
-export const auth = getAuth(app);
+// 커플은 custom token 으로만 로그인하므로 팝업·리디렉션 로그인 도구(apis.google.com 스크립트)를 싣지 않는다.
+export const auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
 
 // 기기에 암호문을 캐시해 두면 다시 열 때 빠르고 읽기 횟수(무료 한도)도 아낀다.
 // IndexedDB 를 못 쓰는 환경에서는 Firebase 가 메모리 캐시로 대신한다.

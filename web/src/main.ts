@@ -5,6 +5,7 @@ import { roomUid } from './api';
 import { auth, db } from './firebase';
 import { renderLogin } from './pages/login';
 import { renderRoom } from './pages/room';
+import { captureInstallPrompt, registerServiceWorker } from './pwa';
 import { clearSession, loadSession, type Session } from './session';
 
 const root = document.getElementById('app')!;
@@ -44,6 +45,8 @@ function takeNotice(): string | undefined {
 }
 
 async function boot() {
+  captureInstallPrompt();
+  registerServiceWorker();
   const [session] = await Promise.all([loadSession(), auth.authStateReady()]);
   const user = auth.currentUser;
   if (session && user?.uid === roomUid(session.roomId, session.side)) {

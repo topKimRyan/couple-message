@@ -21,7 +21,7 @@
   │
   │ (1) POST /login {roomId, side, deviceId}
   ▼
-[Cloudflare Worker] ── IP·기기 잠금 확인 ── Firestore REST(서비스 계정)로 방 존재 확인
+[Cloudflare Worker] ── IP 잠금 확인 ── Firestore REST(서비스 계정)로 방 존재 확인
   │ (2) Firebase custom token (claims: roomId, side)
   ▼
 [커플 기기] (3) signInWithCustomToken → Firestore 직접 읽기·쓰기 (암호문만 오감)
@@ -104,12 +104,18 @@ function inRoom(roomId) { return request.auth != null && request.auth.token.room
 | 엔드포인트 | 입력 | 동작 |
 | --- | --- | --- |
 | `POST /create` | inviteCode, roomId, side, deviceId | 잠금 확인 → 초대 존재·미사용 확인 → 방이 이미 있으면 `409 이미 있는 방`(초대 소모 안 함) → 트랜잭션으로 방 생성 + 초대 사용 처리 + 기기 등록 → custom token |
-| `POST /login` | roomId, side, deviceId | 잠금 확인 → 방 없으면 실패 카운트 + `404` → 있으면 custom token. 처음 보는 deviceId면 기기 등록 후 상대에게 "새 기기에서 로그인했어요" 푸시 |
-| `POST /register-push` | ID 토큰, deviceId, fcmToken | 해당 방 devices 문서에 토큰 저장 |
+| `POST /login` | roomId, side, deviceId | 잠금 확인 → 방 없으면 실패 카운트 + `401` → 있으면 custom token. 처음 보는 deviceId면 기기 등록 후 이 기기를 뺀 방의 모든 기기(상대 + 내 다른 기기)에 "새 기기에서 들어왔어요" 푸시 |
+| `POST /register-push` | ID 토큰, deviceId, fcmToken | 해당 방 devices 문서에 토큰 저장. 같은 토큰이 다른 deviceId 에 있으면 떼어 알림이 두 번 가지 않게 한다 |
 | `POST /notify` | ID 토큰, type(letter / contacts) | 상대 side 기기들에 FCM 전송. 본문은 "새 편지가 왔어요"처럼 내용 없이. 만료 토큰(UNREGISTERED)은 삭제 |
 | `POST /admin/delete-room` | 운영자 ID 토큰, roomId | 운영자 이메일 확인 후 하위 컬렉션 포함 삭제 |
 
-- 잠금: 키는 `ip:{sha256(IP)}`와 `dev:{deviceId}` 두 가지. 10분 안에 5회 실패 → 15분 잠금, 반복될수록 잠금 시간 2배(최대 24시간). deviceId는 공격자가 바꿀 수 있으므로 IP가 주 기준이다.
+- 잠금(`worker/src/lockout.ts`): 키는 IP 하나. deviceId는 공격자가 마음대로 바꿀 수 있어 쓰지 않는다.
+  - IPv6는 한 가입자가 /64 전체를 쓰므로 앞 64비트로 묶는다. 저장 키는 `sha256(서비스 계정 비밀키 | IP 묶음)`이라 IP 원본은 남지 않는다.
+  - 10분 안에 5회 실패 → 15분 잠금, 반복될수록 2배(최대 24시간), 24시간 조용하면 다시 15분부터.
+  - 실패로 세는 것: `/login` 정보 불일치, `/create` 형식 오류·초대 코드 무효. 성공은 카운트를 건드리지 않는다.
+  - 동시 요청으로 카운트를 우회하지 못하게 `lockouts` 문서를 updateTime 전제 조건으로 쓰고, 3번 충돌하면 거절한다.
+- `/register-push`, `/notify`는 `Authorization: Bearer <Firebase ID 토큰>`. Worker가 Google 공개키(JWK)로 서명과 `roomId·side` 클레임을 확인한다.
+- 푸시는 데이터 전용 웹 푸시이고, 서비스 워커(`web/public/sw.js`)가 제목·본문만 띄운다. 편지 내용은 푸시에 절대 넣지 않는다.
 - 실패 응답은 "정보가 맞지 않아요" 하나로 통일(방 없음과 형식 오류를 구분하지 않음).
 - CORS는 `https://<이름>.web.app`만 허용.
 - Secret: `FIREBASE_SERVICE_ACCOUNT`(JSON), `ADMIN_EMAILS`. `wrangler secret put`으로 설정.

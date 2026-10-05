@@ -77,7 +77,8 @@ side   = (myPair == p1) ? "a" : "b"
 
 | 경로 | 필드 | 접근 |
 | --- | --- | --- |
-| `invites/{code}` | alias, used, usedAt, roomId | 운영자만 (사용 처리는 Worker) |
+| `invites/{code}` | alias, used, createdAt, usedAt, roomId, roomDeletedAt | 운영자: 읽기, 만들기(코드 형식·필드 검사), 별칭 고치기, 안 쓴 코드 지우기. 사용 처리는 Worker |
+| `config/admins` | emails (소문자 이메일 배열) | 아무도 못 씀(콘솔에서만). 규칙과 Worker가 운영자 판별에 사용 |
 | `rooms/{roomId}` | createdAt, inviteCode, lastLetterAt, knownDevices(수), contacts.a / contacts.b `{ct, iv, updatedAt}`, settings `{ct, iv}` | 해당 방 토큰: 읽기, 자기 side 연락처·settings 수정. 운영자: 메타 읽기·삭제 |
 | `rooms/{roomId}/letters/{id}` | from(a/b), ct, iv, sentAt, readAt | 해당 방 토큰. 생성 시 `from == token.side`, `sentAt == request.time`. `readAt`은 받는 쪽만 한 번 설정. 수정·삭제 불가 |
 | `rooms/{roomId}/devices/{deviceId}` | side, fcmToken, firstSeen, lastSeen | 클라이언트 전면 차단 (Worker만) |
@@ -88,7 +89,7 @@ side   = (myPair == p1) ? "a" : "b"
 ```
 function isAdmin() { return request.auth != null
   && request.auth.token.email_verified == true
-  && request.auth.token.email in ["<운영자 이메일>"]; }
+  && request.auth.token.email.lower() in get(/databases/$(database)/documents/config/admins).data.emails; }
 function inRoom(roomId) { return request.auth != null && request.auth.token.roomId == roomId; }
 ```
 
@@ -107,7 +108,7 @@ function inRoom(roomId) { return request.auth != null && request.auth.token.room
 | `POST /login` | roomId, side, deviceId | 잠금 확인 → 방 없으면 실패 카운트 + `401` → 있으면 custom token. 처음 보는 deviceId면 기기 등록 후 이 기기를 뺀 방의 모든 기기(상대 + 내 다른 기기)에 "새 기기에서 들어왔어요" 푸시 |
 | `POST /register-push` | ID 토큰, deviceId, fcmToken | 해당 방 devices 문서에 토큰 저장. 같은 토큰이 다른 deviceId 에 있으면 떼어 알림이 두 번 가지 않게 한다 |
 | `POST /notify` | ID 토큰, type(letter / contacts) | 상대 side 기기들에 FCM 전송. 본문은 "새 편지가 왔어요"처럼 내용 없이. 만료 토큰(UNREGISTERED)은 삭제 |
-| `POST /admin/delete-room` | 운영자 ID 토큰, roomId | 운영자 이메일 확인 후 하위 컬렉션 포함 삭제 |
+| `POST /admin/delete-room` | 운영자 ID 토큰, roomId | 구글 로그인 이메일이 `config/admins`에 있는지 확인 → 편지·기기 삭제 → 방 삭제 → 한 번 더 훑어 그 사이 들어온 편지 삭제 → 초대 코드에 `roomDeletedAt` 기록 |
 
 - 잠금(`worker/src/lockout.ts`): 키는 IP 하나. deviceId는 공격자가 마음대로 바꿀 수 있어 쓰지 않는다.
   - IPv6는 한 가입자가 /64 전체를 쓰므로 앞 64비트로 묶는다. 저장 키는 `sha256(서비스 계정 비밀키 | IP 묶음)`이라 IP 원본은 남지 않는다.
@@ -118,7 +119,7 @@ function inRoom(roomId) { return request.auth != null && request.auth.token.room
 - 푸시는 데이터 전용 웹 푸시이고, 서비스 워커(`web/public/sw.js`)가 제목·본문만 띄운다. 편지 내용은 푸시에 절대 넣지 않는다.
 - 실패 응답은 "정보가 맞지 않아요" 하나로 통일(방 없음과 형식 오류를 구분하지 않음).
 - CORS는 `https://<이름>.web.app`만 허용.
-- Secret: `FIREBASE_SERVICE_ACCOUNT`(JSON), `ADMIN_EMAILS`. `wrangler secret put`으로 설정.
+- Secret: `FIREBASE_SERVICE_ACCOUNT`(JSON) 하나. `wrangler secret put`으로 설정. 운영자 목록은 Firestore `config/admins`.
 
 ## 5. 프론트엔드
 
@@ -132,7 +133,8 @@ web/
   src/firebase.ts       Firebase 초기화(modular SDK, 필요한 모듈만)
   src/pages/login.ts    다섯 칸 입력, 방 만들기(초대 코드 칸 펼치기)/입장
   src/pages/room.ts     상단 고정 연락처 칸, D-day, 편지 목록·쓰기, 읽음 표시
-  src/pages/admin.ts    초대 발급, 방 현황(오래 연락 없는 순), 방 삭제
+  admin.html, src/admin/  운영자 화면: 초대 발급, 방 현황(오래 연락 없는 순), 방 삭제.
+                          커플 화면과 다른 이름의 Firebase 앱을 써서 같은 브라우저에서도 로그인이 섞이지 않는다
   src/install-hint.ts   iOS·Android 홈 화면 추가 안내
 worker/
   src/index.ts, src/google-auth.ts, src/firestore.ts, src/fcm.ts, src/lockout.ts
@@ -185,7 +187,7 @@ tests/  crypto 단위 테스트(vitest), 보안 규칙 테스트(Firestore 에�
 
 - [x] 헤어졌을 때: 운영자가 판단해 방을 삭제한다
 - [x] 서버 코드 실행 방식: Cloudflare Workers
-- [ ] 공동 운영자: 둘 경우 `ADMIN_EMAILS`와 규칙의 이메일 목록에 추가만 하면 된다
+- [ ] 공동 운영자: 둘 경우 Firestore `config/admins`의 `emails`에 추가만 하면 된다(규칙 재배포 불필요)
 - [ ] 오래 안 쓰는 방: 무기한 보관할지, 기한을 둘지
 - [ ] 서비스 이름과 주소: `이름.web.app` (Firebase 프로젝트 ID가 주소가 되므로 프로젝트 생성 전에 정해야 함)
 

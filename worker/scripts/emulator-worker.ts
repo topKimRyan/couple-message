@@ -6,14 +6,19 @@ import { createServer } from 'node:http';
 import { Firestore } from '../src/firestore';
 import { base64url } from '../src/google-auth';
 import { handle, type Deps } from '../src/handlers';
-import { checkRoomClaims, decodeJwt } from '../src/id-token';
+import { checkStandardClaims, decodeJwt } from '../src/id-token';
 import { FirestoreStore } from '../src/store';
 
 const PROJECT = 'demo-couple-mailbox';
 const INVITE = 'DEVINVITE';
+const ADMIN = 'admin@example.com';
 
 const db = new Firestore(PROJECT, async () => 'owner', fetch, 'http://127.0.0.1:8080');
-await db.commit([{ path: `invites/${INVITE}`, fields: { alias: '개발용', used: false } }]);
+await db.commit([
+  { path: `invites/${INVITE}`, fields: { alias: '개발용', used: false, createdAt: new Date() } },
+  // 운영자 화면 시험용. Auth 에뮬레이터의 구글 로그인 창에서 이 이메일로 계정을 만들면 된다.
+  { path: 'config/admins', fields: { emails: [ADMIN] } },
+]);
 
 const deps: Deps = {
   store: new FirestoreStore(db),
@@ -32,7 +37,7 @@ const deps: Deps = {
   },
   verifyIdToken: async (token) => {
     const decoded = decodeJwt(token);
-    return decoded && checkRoomClaims(decoded.payload, PROJECT, Date.now());
+    return decoded && checkStandardClaims(decoded.payload, PROJECT, Date.now()) ? decoded.payload : null;
   },
   sendPush: async (fcmToken, message) => {
     console.log(`[push] ${fcmToken} ${JSON.stringify(message)}`);
@@ -56,4 +61,4 @@ createServer(async (req, res) => {
   );
   res.writeHead(response.status, Object.fromEntries(response.headers));
   res.end(Buffer.from(await response.arrayBuffer()));
-}).listen(8787, () => console.log(`emulator worker: http://localhost:8787 (초대 코드 ${INVITE}, 다시 시작하면 미사용으로 초기화)`));
+}).listen(8787, () => console.log(`emulator worker: http://localhost:8787 (초대 코드 ${INVITE}, 운영자 ${ADMIN}, 다시 시작하면 초대 코드는 미사용으로 초기화)`));

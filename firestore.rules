@@ -2,12 +2,21 @@ rules_version = '2';
 
 // docs/design.md §3.
 // 커플은 Worker가 발급한 custom token(claims: roomId, side)으로만 들어온다.
-// 방 문서 생성·삭제, invites, devices, lockouts 는 Worker(서비스 계정)만 다루므로
-// 여기서는 열지 않는다. 운영자 접근은 4단계에서 추가한다.
+// 방 문서 생성·삭제, devices, lockouts 는 Worker(서비스 계정)만 다룬다.
+// 운영자는 구글 로그인 + config/admins 목록으로 확인하고, 초대 코드와 방 메타데이터만 본다.
+// 편지(letters)는 운영자도 읽을 수 없다.
 service cloud.firestore {
   match /databases/{database}/documents {
     function inRoom(roomId) {
       return request.auth != null && request.auth.token.roomId == roomId;
+    }
+
+    // 운영자 이메일 목록은 콘솔에서 config/admins {emails: [...]} 로 관리한다. Worker도 같은 문서를 본다.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('email', '').lower()
+          in get(/databases/$(database)/documents/config/admins).data.get('emails', []);
     }
 
     function mySide() {
@@ -29,8 +38,28 @@ service cloud.firestore {
         && v.updatedAt == request.time;
     }
 
+    // 초대 코드: 문서 ID 가 코드. 운영자가 만들고, 아직 안 쓴 코드만 지울 수 있다. 사용 처리는 Worker.
+    match /invites/{code} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        && code.matches('^[A-HJ-NP-Z2-9]{10}$')
+        && request.resource.data.keys().hasOnly(['alias', 'used', 'createdAt'])
+        && request.resource.data.alias is string
+        && request.resource.data.alias.size() > 0
+        && request.resource.data.alias.size() <= 40
+        && request.resource.data.used == false
+        && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['alias'])
+        && request.resource.data.alias is string
+        && request.resource.data.alias.size() > 0
+        && request.resource.data.alias.size() <= 40;
+      allow delete: if isAdmin() && resource.data.used == false;
+    }
+
     match /rooms/{roomId} {
-      allow get: if inRoom(roomId);
+      allow get: if inRoom(roomId) || isAdmin();
+      allow list: if isAdmin();
       allow update: if inRoom(roomId) && validRoomUpdate();
 
       function validRoomUpdate() {

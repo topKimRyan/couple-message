@@ -1,7 +1,6 @@
-import { notify } from '../api';
 import type { Side } from '../crypto';
 import { relativeTime } from '../format';
-import { CONTACT_MAX, saveContact, type ContactView, type RoomView } from '../room-data';
+import { CONTACT_MAX, notifyPartner, saveContact, type ContactView, type RoomView } from '../room-data';
 import type { Session } from '../session';
 import { el } from './dom';
 
@@ -68,7 +67,7 @@ export function createContacts(session: Session) {
       message.textContent = '';
       try {
         await saveContact(session, textarea.value.trim());
-        void notify('contacts');
+        void notifyPartner('contacts');
         editing = false;
         renderMine();
       } catch {

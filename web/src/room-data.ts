@@ -15,8 +15,9 @@ import {
   type Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore';
+import { notify } from './api';
 import { open, seal, type Sealed, type Side } from './crypto';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import type { Session } from './session';
 
 export const CONTACT_MAX = 500;
@@ -172,4 +173,14 @@ export async function sendLetter(session: Session, text: string): Promise<void> 
 
 export async function markRead(session: Session, letterId: string): Promise<void> {
   await updateDoc(doc(db, 'rooms', session.roomId, 'letters', letterId), { readAt: serverTimestamp() });
+}
+
+/** 상대 기기에 푸시를 보내 달라고 한다. 알림은 덤이므로 실패해도 조용히 넘어간다. */
+export async function notifyPartner(type: 'letter' | 'contacts'): Promise<void> {
+  try {
+    const user = auth.currentUser;
+    if (user) await notify(await user.getIdToken(), type);
+  } catch (err) {
+    console.warn('notify', err);
+  }
 }

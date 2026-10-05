@@ -50,11 +50,17 @@ beforeEach(async () => {
     });
     await setDoc(doc(db, 'rooms', ROOM, 'devices', 'dev1'), { side: 'a' });
     await setDoc(doc(db, 'invites', 'KIMLEE2026'), { alias: '건우 커플', used: true });
+    await setDoc(doc(db, 'invites', 'UNUSED2345'), { alias: '새 커플', used: false });
+    await setDoc(doc(db, 'config', 'admins'), { emails: ['admin@example.com'] });
   });
 });
 
 function as(side: 'a' | 'b', roomId = ROOM): Firestore {
   return env.authenticatedContext(`r_${roomId.slice(0, 32)}_${side}`, { roomId, side }).firestore() as unknown as Firestore;
+}
+
+function google(email: string, verified = true): Firestore {
+  return env.authenticatedContext(`g_${email}`, { email, email_verified: verified }).firestore() as unknown as Firestore;
 }
 
 function sendLetter(db: Firestore, fields: Record<string, unknown> = {}, roomId = ROOM) {
@@ -178,5 +184,74 @@ describe('서버 전용 데이터', () => {
     await assertFails(getDoc(doc(db, 'invites', 'KIMLEE2026')));
     await assertFails(getDoc(doc(db, 'lockouts', 'x')));
     await assertFails(setDoc(doc(db, 'rooms', ROOM, 'devices', 'mine'), { side: 'a' }));
+  });
+});
+
+describe('운영자', () => {
+  const admin = () => google('Admin@Example.com');
+  const newInvite = (fields: Record<string, unknown> = {}) => ({
+    alias: '민수 지은',
+    used: false,
+    createdAt: serverTimestamp(),
+    ...fields,
+  });
+
+  it('방 목록과 메타데이터, 초대 코드를 본다', async () => {
+    await assertSucceeds(getDocs(collection(admin(), 'rooms')));
+    await assertSucceeds(getDoc(doc(admin(), 'rooms', ROOM)));
+    await assertSucceeds(getDocs(collection(admin(), 'invites')));
+  });
+
+  it('편지와 기기는 운영자도 못 본다', async () => {
+    await assertFails(getDocs(collection(admin(), 'rooms', ROOM, 'letters')));
+    await assertFails(getDoc(doc(admin(), 'rooms', ROOM, 'letters', 'fromA')));
+    await assertFails(getDocs(collection(admin(), 'rooms', ROOM, 'devices')));
+  });
+
+  it('방을 고치거나 지우는 것은 클라이언트로 안 된다 (Worker 가 한다)', async () => {
+    await assertFails(updateDoc(doc(admin(), 'rooms', ROOM), { inviteCode: 'X' }));
+    await assertFails(deleteDoc(doc(admin(), 'rooms', ROOM)));
+  });
+
+  it('초대 코드를 만든다', async () => {
+    await assertSucceeds(setDoc(doc(admin(), 'invites', 'ABCDE23456'), newInvite()));
+  });
+
+  it('형식이 틀린 초대 코드는 거부', async () => {
+    await assertFails(setDoc(doc(admin(), 'invites', 'abcde23456'), newInvite()));
+    await assertFails(setDoc(doc(admin(), 'invites', 'ABCDE2345O'), newInvite()));
+    await assertFails(setDoc(doc(admin(), 'invites', 'ABCDE23457'), newInvite({ used: true })));
+    await assertFails(setDoc(doc(admin(), 'invites', 'ABCDE23458'), newInvite({ alias: '' })));
+    await assertFails(setDoc(doc(admin(), 'invites', 'ABCDE23459'), newInvite({ roomId: ROOM })));
+    await assertFails(setDoc(doc(admin(), 'invites', 'ABCDE2345B'), newInvite({ createdAt: Timestamp.fromMillis(0) })));
+  });
+
+  it('별칭만 고친다', async () => {
+    await assertSucceeds(updateDoc(doc(admin(), 'invites', 'KIMLEE2026'), { alias: '건우랑 여자친구' }));
+    await assertFails(updateDoc(doc(admin(), 'invites', 'UNUSED2345'), { used: true }));
+  });
+
+  it('안 쓴 초대 코드만 지운다', async () => {
+    await assertSucceeds(deleteDoc(doc(admin(), 'invites', 'UNUSED2345')));
+    await assertFails(deleteDoc(doc(admin(), 'invites', 'KIMLEE2026')));
+  });
+
+  it('운영자 목록은 클라이언트가 못 고친다', async () => {
+    await assertFails(setDoc(doc(admin(), 'config', 'admins'), { emails: ['admin@example.com', 'me@example.com'] }));
+    await assertFails(setDoc(doc(google('me@example.com'), 'config', 'admins'), { emails: ['me@example.com'] }));
+  });
+
+  it('목록에 없는 구글 계정, 이메일 미확인, 커플은 운영자가 아니다', async () => {
+    for (const db of [google('someone@example.com'), google('admin@example.com', false), as('a')]) {
+      await assertFails(getDocs(collection(db, 'rooms')));
+      await assertFails(getDocs(collection(db, 'invites')));
+      await assertFails(setDoc(doc(db, 'invites', 'ZZZZZ22222'), newInvite()));
+    }
+    await assertFails(getDoc(doc(google('someone@example.com'), 'rooms', ROOM)));
+  });
+
+  it('운영자 목록 문서가 없으면 아무도 운영자가 아니다', async () => {
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'config', 'admins')));
+    await assertFails(getDocs(collection(admin(), 'rooms')));
   });
 });

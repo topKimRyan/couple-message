@@ -1,6 +1,6 @@
 // Firestore REST API 최소 클라이언트. https://firebase.google.com/docs/firestore/reference/rest
 
-export type FieldValue = string | number | boolean | null | Date | { [key: string]: FieldValue };
+export type FieldValue = string | number | boolean | null | Date | FieldValue[] | { [key: string]: FieldValue };
 
 type Value =
   | { nullValue: null }
@@ -9,6 +9,7 @@ type Value =
   | { doubleValue: number }
   | { stringValue: string }
   | { timestampValue: string }
+  | { arrayValue: { values?: Value[] } }
   | { mapValue: { fields?: Record<string, Value> } };
 
 export function encodeValue(v: FieldValue): Value {
@@ -17,6 +18,7 @@ export function encodeValue(v: FieldValue): Value {
   if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
   if (typeof v === 'string') return { stringValue: v };
   if (v instanceof Date) return { timestampValue: v.toISOString() };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(encodeValue) } };
   return { mapValue: { fields: encodeFields(v) } };
 }
 
@@ -31,6 +33,7 @@ export function decodeValue(v: Value): FieldValue {
   if ('doubleValue' in v) return v.doubleValue;
   if ('stringValue' in v) return v.stringValue;
   if ('timestampValue' in v) return new Date(v.timestampValue);
+  if ('arrayValue' in v) return (v.arrayValue.values ?? []).map(decodeValue);
   return decodeFields(v.mapValue.fields ?? {});
 }
 
@@ -45,7 +48,14 @@ export interface Doc {
 
 export type Precondition = { exists: boolean } | { updateTime: string };
 
-export interface Write {
+export type Write = UpdateWrite | DeleteWrite;
+
+export interface DeleteWrite {
+  path: string;
+  delete: true;
+}
+
+export interface UpdateWrite {
   path: string;
   fields: Record<string, FieldValue>;
   /** 지정하면 이 필드만 바꾸고 나머지는 둔다. mask 에 있는데 fields 에 없는 필드는 지워진다. 없으면 문서 전체를 덮어쓴다. */
@@ -84,26 +94,41 @@ export class Firestore {
     return { fields: decodeFields(data.fields ?? {}), updateTime: data.updateTime };
   }
 
-  /** 하위 컬렉션의 문서 목록. 방의 기기처럼 작은 컬렉션에만 쓴다. */
-  async list(path: string): Promise<(Doc & { id: string })[]> {
-    const res = await this.request(`${this.baseUrl}/v1/${this.root}/${path}?pageSize=300`);
-    if (!res.ok) throw new Error(`firestore list ${path}: ${res.status} ${await res.text()}`);
-    const data = (await res.json()) as { documents?: { name: string; fields?: Record<string, Value>; updateTime: string }[] };
-    return (data.documents ?? []).map((d) => ({
-      id: d.name.slice(d.name.lastIndexOf('/') + 1),
-      fields: decodeFields(d.fields ?? {}),
-      updateTime: d.updateTime,
-    }));
+  /** 컬렉션의 모든 문서. fields 를 주면 그 필드만 받아 온다(빈 배열이면 ID만). */
+  async list(path: string, fields?: string[]): Promise<(Doc & { id: string })[]> {
+    const docs: (Doc & { id: string })[] = [];
+    let pageToken = '';
+    do {
+      const params = new URLSearchParams({ pageSize: '300' });
+      if (pageToken) params.set('pageToken', pageToken);
+      // 없는 필드만 고르면 문서 이름만 온다. (__이름__ 꼴은 예약어라 안 된다)
+      for (const f of fields?.length === 0 ? ['idOnly'] : (fields ?? [])) params.append('mask.fieldPaths', f);
+      const res = await this.request(`${this.baseUrl}/v1/${this.root}/${path}?${params}`);
+      if (!res.ok) throw new Error(`firestore list ${path}: ${res.status} ${await res.text()}`);
+      const data = (await res.json()) as {
+        documents?: { name: string; fields?: Record<string, Value>; updateTime: string }[];
+        nextPageToken?: string;
+      };
+      for (const d of data.documents ?? []) {
+        docs.push({ id: d.name.slice(d.name.lastIndexOf('/') + 1), fields: decodeFields(d.fields ?? {}), updateTime: d.updateTime });
+      }
+      pageToken = data.nextPageToken ?? '';
+    } while (pageToken);
+    return docs;
   }
 
   /** 모든 쓰기를 한꺼번에 적용하거나 하나도 적용하지 않는다. */
   async commit(writes: Write[]): Promise<void> {
     const body = {
-      writes: writes.map((w) => ({
-        update: { name: `${this.root}/${w.path}`, fields: encodeFields(w.fields) },
-        ...(w.mask && { updateMask: { fieldPaths: w.mask } }),
-        ...(w.precondition && { currentDocument: w.precondition }),
-      })),
+      writes: writes.map((w) =>
+        'delete' in w
+          ? { delete: `${this.root}/${w.path}` }
+          : {
+              update: { name: `${this.root}/${w.path}`, fields: encodeFields(w.fields) },
+              ...(w.mask && { updateMask: { fieldPaths: w.mask } }),
+              ...(w.precondition && { currentDocument: w.precondition }),
+            },
+      ),
     };
     const res = await this.request(`${this.baseUrl}/v1/${this.root}:commit`, {
       method: 'POST',

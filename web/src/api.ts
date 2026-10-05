@@ -1,5 +1,4 @@
 import type { Side } from './crypto';
-import { auth } from './firebase';
 
 export class ApiError extends Error {
   constructor(
@@ -40,14 +39,13 @@ export function registerPush(idToken: string, body: { deviceId: string; fcmToken
   return post<{ ok: true }>('/register-push', body, idToken);
 }
 
-/** 상대 기기에 푸시를 보내 달라고 한다. 알림은 덤이므로 실패해도 조용히 넘어간다. */
-export async function notify(type: 'letter' | 'contacts'): Promise<void> {
-  try {
-    const user = auth.currentUser;
-    if (user) await post('/notify', { type }, await user.getIdToken());
-  } catch (err) {
-    console.warn('notify', err);
-  }
+export function notify(idToken: string, type: 'letter' | 'contacts') {
+  return post<{ ok: true }>('/notify', { type }, idToken);
+}
+
+/** 운영자 전용: 편지·기기까지 방을 통째로 지운다. */
+export function deleteRoom(idToken: string, roomId: string) {
+  return post<{ ok: true }>('/admin/delete-room', { roomId }, idToken);
 }
 
 /** Worker가 발급하는 Firebase uid와 같은 규칙. worker/src/handlers.ts 참고. */

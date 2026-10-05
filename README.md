@@ -11,7 +11,7 @@
 ## 구조
 
 ```
-web/       PWA (로그인, 방 화면) — Vite + TypeScript
+web/       PWA (로그인, 방 화면) + 운영자 화면(/admin) — Vite + TypeScript
 worker/    Cloudflare Worker (/create, /login: 잠금 확인 후 Firebase custom token 발급, /register-push, /notify: 웹 푸시)
 rules-test/ 보안 규칙 테스트 (Firestore 에뮬레이터)
 firestore.rules, firebase.json
@@ -22,4 +22,4 @@ firestore.rules, firebase.json
 - [x] 1단계 뼈대: 키 파생, 로그인 화면, 방 만들기·입장
 - [x] 2단계 연락처 칸, 안부 편지, 졸업 디데이, 보안 규칙
 - [x] 3단계 PWA, 웹 푸시, 새 기기 알림, 잠금 (실제 기기 푸시 수신은 배포 후 확인)
-- [ ] 4단계 운영자 화면
+- [x] 4단계 운영자 화면: 초대 코드, 방 현황, 방 삭제

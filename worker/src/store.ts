@@ -39,6 +39,10 @@ export interface Store {
   listDevices(roomId: string): Promise<Device[]>;
   setPushToken(roomId: string, deviceId: string, side: Side, fcmToken: string, now: Date): Promise<void>;
   clearPushToken(roomId: string, deviceId: string): Promise<void>;
+  /** config/admins 의 운영자 이메일(소문자). 문서가 없으면 빈 목록. */
+  getAdminEmails(): Promise<string[]>;
+  /** 편지·기기까지 모두 지운다. 방이 없었으면 false. */
+  deleteRoom(roomId: string, now: Date): Promise<boolean>;
   getLock(key: string): Promise<StoredLock | null>;
   /** prevUpdateTime 이후 다른 요청이 먼저 썼으면 false. 처음 쓰는 경우 prevUpdateTime 은 null. */
   saveLock(key: string, state: LockState, prevUpdateTime: string | null): Promise<boolean>;
@@ -118,6 +122,44 @@ export class FirestoreStore implements Store {
     ]).catch((err) => {
       if (!(err instanceof PreconditionFailed)) throw err;
     });
+  }
+
+  async getAdminEmails(): Promise<string[]> {
+    const doc = await this.db.get('config/admins');
+    const emails = doc?.fields.emails;
+    return Array.isArray(emails) ? emails.filter((e) => typeof e === 'string').map((e) => e.toLowerCase()) : [];
+  }
+
+  async deleteRoom(roomId: string, now: Date): Promise<boolean> {
+    const room = await this.db.get(`rooms/${roomId}`);
+    if (!room) return false;
+    // 하위 문서를 먼저 지우고 방 문서는 마지막에. 중간에 끊겨도 다시 지우면 이어서 지워진다.
+    await this.deleteChildren(roomId);
+    await this.db.commit([{ path: `rooms/${roomId}`, delete: true }]);
+    // 목록을 읽은 뒤 방이 지워지기 전에 들어온 편지가 있을 수 있다. 방이 없으면 규칙상 새 편지는 못 쓰므로 한 번 더 훑으면 끝난다.
+    await this.deleteChildren(roomId);
+    // 초대 코드 목록에서 "삭제됨"으로 보이게 남긴다. 초대 문서가 없어도 방 삭제는 이미 끝났다.
+    const inviteCode = room.fields.inviteCode;
+    if (typeof inviteCode === 'string') {
+      await this.db
+        .commit([
+          { path: `invites/${inviteCode}`, fields: { roomDeletedAt: now }, mask: ['roomDeletedAt'], precondition: { exists: true } },
+        ])
+        .catch((err) => {
+          if (!(err instanceof PreconditionFailed)) throw err;
+        });
+    }
+    return true;
+  }
+
+  private async deleteChildren(roomId: string): Promise<void> {
+    const paths = [
+      ...(await this.db.list(`rooms/${roomId}/letters`, [])).map((d) => `rooms/${roomId}/letters/${d.id}`),
+      ...(await this.db.list(`rooms/${roomId}/devices`, [])).map((d) => `rooms/${roomId}/devices/${d.id}`),
+    ];
+    for (let i = 0; i < paths.length; i += 400) {
+      await this.db.commit(paths.slice(i, i + 400).map((path) => ({ path, delete: true as const })));
+    }
   }
 
   async getLock(key: string): Promise<StoredLock | null> {

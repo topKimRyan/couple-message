@@ -43,6 +43,17 @@ class MemoryStore implements Store {
     const d = this.devices.get(`${roomId}/${deviceId}`);
     if (d) d.fcmToken = null;
   }
+  admins = ['admin@example.com'];
+  deleted: string[] = [];
+  async getAdminEmails() {
+    return this.admins;
+  }
+  async deleteRoom(roomId: string) {
+    if (!this.rooms.delete(roomId)) return false;
+    this.deleted.push(roomId);
+    for (const [key, d] of this.devices) if (d.roomId === roomId) this.devices.delete(key);
+    return true;
+  }
   async getLock(key: string) {
     return this.locks.get(key) ?? null;
   }
@@ -79,10 +90,12 @@ beforeEach(() => {
   deps = {
     store,
     mintToken: async (uid, claims) => JSON.stringify({ uid, claims }),
-    // 테스트용: "room:side" 형태의 토큰만 유효
+    // 테스트용 토큰: "room:<side>" = 커플, "google:<email>[:unverified]" = 구글 로그인
     verifyIdToken: async (token) => {
-      const [roomId, side] = token.split(':');
-      return roomId === ROOM && (side === 'a' || side === 'b') ? { roomId, side } : null;
+      const [kind, value, flag] = token.split(':');
+      if (kind === ROOM) return { sub: 'u', roomId: ROOM, side: value };
+      if (kind === 'google') return { sub: 'g', email: value, email_verified: flag !== 'unverified' };
+      return null;
     },
     sendPush: async (token, message): Promise<PushResult> => {
       if (invalidTokens.has(token)) return 'invalid-token';
@@ -260,6 +273,43 @@ describe('/register-push, /notify', () => {
     const res = await call('/notify', { type: 'contacts' }, { bearer: `${ROOM}:a` });
     expect(res.status).toBe(200);
     await expect(flush()).resolves.toBeDefined();
+  });
+});
+
+describe('/admin/delete-room', () => {
+  beforeEach(() => {
+    store.rooms.add(ROOM);
+    store.devices.set(`${ROOM}/a-phone-1`, { roomId: ROOM, deviceId: 'a-phone-1', side: 'a', fcmToken: null });
+  });
+  const del = (bearer?: string, roomId = ROOM) => call('/admin/delete-room', { roomId }, { bearer });
+
+  it('운영자는 방을 지운다 (이메일 대소문자 무시)', async () => {
+    const res = await del('google:Admin@Example.com');
+    expect(res.status).toBe(200);
+    expect(store.rooms.has(ROOM)).toBe(false);
+    expect(store.devices.size).toBe(0);
+  });
+
+  it('운영자가 아니면 403, 이메일 미확인·커플 토큰·토큰 없음은 401', async () => {
+    expect((await del('google:someone@example.com')).status).toBe(403);
+    expect((await del('google:admin@example.com:unverified')).status).toBe(401);
+    expect((await del(`${ROOM}:a`)).status).toBe(401);
+    expect((await del()).status).toBe(401);
+    expect(store.rooms.has(ROOM)).toBe(true);
+  });
+
+  it('없는 방 404, 잘못된 형식 400', async () => {
+    expect((await del('google:admin@example.com', 'cd'.repeat(32))).status).toBe(404);
+    expect((await del('google:admin@example.com', 'nope')).status).toBe(400);
+  });
+
+  it('운영자 목록이 비어 있으면 아무도 못 지운다', async () => {
+    store.admins = [];
+    expect((await del('google:admin@example.com')).status).toBe(403);
+  });
+
+  it('구글 로그인 토큰으로 커플 기능은 못 쓴다', async () => {
+    expect((await call('/notify', { type: 'letter' }, { bearer: 'google:admin@example.com' })).status).toBe(401);
   });
 });
 

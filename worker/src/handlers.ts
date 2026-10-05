@@ -1,12 +1,13 @@
 import type { PushMessage, PushResult, PushType } from './fcm';
-import type { RoomClaims } from './id-token';
+import { roomClaimsOf, verifiedEmailOf, type RoomClaims, type TokenPayload } from './id-token';
 import { EMPTY_LOCK, ipBucket, lockedFor, recordFailure } from './lockout';
 import type { Device, Side, Store } from './store';
 
 export interface Deps {
   store: Store;
   mintToken: (uid: string, claims: Record<string, unknown>) => Promise<string>;
-  verifyIdToken: (token: string) => Promise<RoomClaims | null>;
+  /** 서명·만료 등이 맞으면 토큰 내용. 방 클레임인지 운영자인지는 핸들러가 판단한다. */
+  verifyIdToken: (token: string) => Promise<TokenPayload | null>;
   sendPush: (fcmToken: string, message: PushMessage) => Promise<PushResult>;
   /** IP 묶음을 저장용 키로. 원래 IP는 저장하지 않는다. */
   hashIp: (bucket: string) => Promise<string>;
@@ -121,9 +122,19 @@ async function pushTo(deps: Deps, roomId: string, devices: Device[], messageFor:
 }
 
 async function authenticate(deps: Deps, req: Req): Promise<RoomClaims> {
-  const claims = req.bearer ? await deps.verifyIdToken(req.bearer) : null;
+  const payload = req.bearer ? await deps.verifyIdToken(req.bearer) : null;
+  const claims = payload && roomClaimsOf(payload);
   if (!claims) throw unauthorized();
   return claims;
+}
+
+/** 구글 로그인한 운영자인지. 목록은 Firestore config/admins (보안 규칙과 같은 곳). */
+async function authenticateAdmin(deps: Deps, req: Req): Promise<string> {
+  const payload = req.bearer ? await deps.verifyIdToken(req.bearer) : null;
+  const email = payload && verifiedEmailOf(payload);
+  if (!email) throw unauthorized();
+  if (!(await deps.store.getAdminEmails()).includes(email)) throw new HttpError(403, 'forbidden', '운영자 계정이 아니에요.');
+  return email;
 }
 
 // ── 엔드포인트 ─────────────────────────────────────────
@@ -223,11 +234,21 @@ async function handleNotify(req: Req, deps: Deps) {
   return { ok: true };
 }
 
+async function handleDeleteRoom(req: Req, deps: Deps) {
+  const admin = await authenticateAdmin(deps, req);
+  const { roomId } = req.body;
+  if (typeof roomId !== 'string' || !ROOM_ID_RE.test(roomId)) throw badRequest();
+  if (!(await deps.store.deleteRoom(roomId, now(deps)))) throw new HttpError(404, 'not_found', '이미 없는 방이에요.');
+  console.log(`room deleted by ${admin}: ${roomId}`);
+  return { ok: true };
+}
+
 const routes: Record<string, (req: Req, deps: Deps) => Promise<unknown>> = {
   '/create': handleCreate,
   '/login': handleLogin,
   '/register-push': handleRegisterPush,
   '/notify': handleNotify,
+  '/admin/delete-room': handleDeleteRoom,
 };
 
 function corsHeaders(origin: string | null, deps: Deps): Record<string, string> {

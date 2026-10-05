@@ -3,7 +3,7 @@ import { decodeFields, encodeFields, Firestore, PreconditionFailed } from '../sr
 
 describe('값 변환', () => {
   it('왕복', () => {
-    const value = { s: '안녕', n: 3, b: true, z: null, t: new Date('2026-10-05T00:00:00Z'), m: { x: 'y' } };
+    const value = { s: '안녕', n: 3, b: true, z: null, t: new Date('2026-10-05T00:00:00Z'), m: { x: 'y' }, a: ['p', 1] };
     expect(decodeFields(encodeFields(value))).toEqual(value);
   });
 });

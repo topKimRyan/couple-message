@@ -32,17 +32,29 @@ export function decodeJwt(token: string): { header: Record<string, unknown>; pay
   }
 }
 
-/** 서명 이외의 항목 확인. 에뮬레이터용 검증기도 이것을 쓴다. */
-export function checkRoomClaims(payload: Record<string, unknown>, projectId: string, nowMs: number): RoomClaims | null {
+export type TokenPayload = Record<string, unknown>;
+
+/** 서명 이외의 표준 항목 확인. 에뮬레이터용 검증기도 이것을 쓴다. */
+export function checkStandardClaims(payload: TokenPayload, projectId: string, nowMs: number): boolean {
   const now = nowMs / 1000;
-  const { aud, iss, exp, iat, sub, roomId, side } = payload;
-  if (aud !== projectId || iss !== `https://securetoken.google.com/${projectId}`) return null;
-  if (typeof exp !== 'number' || exp <= now) return null;
-  if (typeof iat !== 'number' || iat > now + CLOCK_SKEW_S) return null;
-  if (typeof sub !== 'string' || !sub) return null;
+  const { aud, iss, exp, iat, sub } = payload;
+  if (aud !== projectId || iss !== `https://securetoken.google.com/${projectId}`) return false;
+  if (typeof exp !== 'number' || exp <= now) return false;
+  if (typeof iat !== 'number' || iat > now + CLOCK_SKEW_S) return false;
+  return typeof sub === 'string' && sub.length > 0;
+}
+
+/** 커플 토큰(Worker가 발급한 custom token 으로 로그인)이면 방 클레임. */
+export function roomClaimsOf(payload: TokenPayload): RoomClaims | null {
+  const { roomId, side } = payload;
   if (typeof roomId !== 'string' || !ROOM_ID_RE.test(roomId)) return null;
   if (side !== 'a' && side !== 'b') return null;
   return { roomId, side };
+}
+
+/** 구글 로그인으로 확인된 이메일. 운영자인지는 호출하는 쪽이 목록과 비교한다. */
+export function verifiedEmailOf(payload: TokenPayload): string | null {
+  return payload.email_verified === true && typeof payload.email === 'string' ? payload.email.toLowerCase() : null;
 }
 
 export class IdTokenVerifier {
@@ -79,12 +91,11 @@ export class IdTokenVerifier {
     return (await this.loadKeys()).get(kid);
   }
 
-  /** 유효하면 방 클레임, 아니면 null. */
-  async verify(token: string): Promise<RoomClaims | null> {
+  /** 서명과 표준 항목이 맞으면 토큰 내용, 아니면 null. */
+  async verify(token: string): Promise<TokenPayload | null> {
     const decoded = decodeJwt(token);
     if (!decoded || decoded.header.alg !== 'RS256' || typeof decoded.header.kid !== 'string') return null;
-    const claims = checkRoomClaims(decoded.payload, this.projectId, this.now());
-    if (!claims) return null;
+    if (!checkStandardClaims(decoded.payload, this.projectId, this.now())) return null;
 
     const key = await this.key(decoded.header.kid);
     if (!key) return null;
@@ -95,6 +106,6 @@ export class IdTokenVerifier {
       decodeSignature(s),
       new TextEncoder().encode(`${h}.${p}`),
     );
-    return ok ? claims : null;
+    return ok ? decoded.payload : null;
   }
 }

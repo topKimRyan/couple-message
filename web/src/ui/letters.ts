@@ -1,6 +1,5 @@
 import { formatDateTime, relativeTime } from '../format';
-import { notify } from '../api';
-import { LETTER_MAX, sendLetter, type LetterView } from '../room-data';
+import { LETTER_MAX, notifyPartner, sendLetter, type LetterView } from '../room-data';
 import type { Session } from '../session';
 import { el } from './dom';
 
@@ -43,7 +42,7 @@ export function createLetters(session: Session, { onMore }: Options) {
     message.textContent = '';
     try {
       await sendLetter(session, text);
-      void notify('letter');
+      void notifyPartner('letter');
     } catch {
       textarea.value = text;
       updateCounter();

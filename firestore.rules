@@ -1,0 +1,16 @@
+rules_version = '2';
+
+// docs/design.md §3. 1단계: 자기 방 문서 읽기만 연다.
+// 나머지(invites, devices, lockouts, 다른 방)는 기본값으로 모두 거부된다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Worker가 발급한 custom token 에 들어 있는 방 ID.
+    function inRoom(roomId) {
+      return request.auth != null && request.auth.token.roomId == roomId;
+    }
+
+    match /rooms/{roomId} {
+      allow get: if inRoom(roomId);
+    }
+  }
+}

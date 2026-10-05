@@ -1,0 +1,11 @@
+name = "couple-mailbox"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+# 서비스 이름이 정해지면 실제 주소로 바꾼다.
+ALLOWED_ORIGINS = "https://CHANGE-ME.web.app,https://CHANGE-ME.firebaseapp.com"
+
+# 비밀값은 여기에 쓰지 않는다:
+#   npx wrangler secret put FIREBASE_SERVICE_ACCOUNT
+# 로컬 개발은 .dev.vars 에 (.dev.vars.example 참고)

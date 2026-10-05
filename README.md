@@ -4,5 +4,21 @@
 
 - 기획서: [docs/spec.md](docs/spec.md)
 - 설계 문서: [docs/design.md](docs/design.md)
+- 설치와 배포: [docs/setup.md](docs/setup.md)
 
 구성: Firebase(Hosting, Firestore, Auth, Cloud Messaging) + Cloudflare Workers(로그인 잠금·푸시 전송) + Vite/Vanilla TypeScript.
+
+## 구조
+
+```
+web/       PWA (로그인, 방 화면) — Vite + TypeScript
+worker/    Cloudflare Worker (/create, /login: 방 확인 후 Firebase custom token 발급)
+firestore.rules, firebase.json
+```
+
+## 진행 상황
+
+- [x] 1단계 뼈대: 키 파생, 로그인 화면, 방 만들기·입장
+- [ ] 2단계 연락처 칸, 안부 편지, 보안 규칙
+- [ ] 3단계 PWA, 웹 푸시, 새 기기 알림, 잠금
+- [ ] 4단계 운영자 화면

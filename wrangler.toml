@@ -1,7 +1,7 @@
 # Cloudflare Worker 하나가 화면 파일(web/dist)과 API(/api/*)를 같이 서빙한다.
 # Cloudflare 대시보드에서 이 GitHub 저장소를 연결하면 main 에 push 될 때마다
 #   빌드: npm run build   →   배포: npx wrangler deploy   (이 파일을 읽는다)
-name = "couple-mailbox"
+name = "couple-message"
 main = "worker/src/index.ts"
 compatibility_date = "2026-10-01"
 

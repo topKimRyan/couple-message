@@ -1,7 +1,7 @@
 # 설치와 배포
 
 구성: **Cloudflare Worker 하나**가 화면 파일과 API(`/api/*`)를 같이 서빙하고, **Firebase**는 Firestore·로그인·푸시만 맡는다.
-주소는 `https://couple-mailbox.<Cloudflare 서브도메인>.workers.dev`. 내 컴퓨터에 아무것도 설치하지 않고 콘솔(웹 화면)만으로 설정할 수 있다.
+주소는 `https://couple-message.2369-ryan.workers.dev`. 내 컴퓨터에 아무것도 설치하지 않고 콘솔(웹 화면)만으로 설정할 수 있다.
 
 > 비밀값은 하나뿐이다: **Firebase 서비스 계정 키(JSON)**. 이것만 Cloudflare 대시보드의 비밀(Secret)에 넣고, 채팅·저장소 어디에도 붙여 넣지 않는다.
 > 나머지 Firebase 웹 설정값은 브라우저에 그대로 전달되는 공개값이라 `web/.env.production`에 커밋한다.
@@ -32,7 +32,7 @@ https://dash.cloudflare.com
 1. 가입 후 **Workers 및 Pages** 를 처음 열면 workers.dev **서브도메인**을 정하라고 한다(예: `kimryan`). 주소에 들어가니 짧게.
 2. **애플리케이션 만들기 → Workers → Git 저장소 가져오기(Import a repository)** → GitHub 연결 → `couple-message` 선택.
 3. 빌드 설정:
-   - 프로젝트 이름: `couple-mailbox` (`wrangler.toml`의 `name`과 같아야 한다)
+   - 프로젝트 이름: `couple-message` (`wrangler.toml`의 `name`과 같아야 한다)
    - 빌드 명령: `npm run build`
    - 배포 명령: `npx wrangler deploy`
    - 루트 디렉터리: `/` (비워 둠), 프로덕션 브랜치: `main`
@@ -41,12 +41,12 @@ https://dash.cloudflare.com
 
 ## 3. Firebase에 배포 주소 알려 주기
 
-**Authentication → 설정 → 승인된 도메인 → 도메인 추가**: `couple-mailbox.<서브도메인>.workers.dev`
+**Authentication → 설정 → 승인된 도메인 → 도메인 추가**: `couple-message.2369-ryan.workers.dev`
 (운영자 구글 로그인 팝업이 이 주소에서 열리려면 필요하다.)
 
 ## 4. 첫 사용
 
-1. `https://couple-mailbox.<서브도메인>.workers.dev/admin` 에서 구글 로그인.
+1. `https://couple-message.2369-ryan.workers.dev/admin` 에서 구글 로그인.
 2. "초대 코드 만들기"에 별칭(예: "건우 커플")을 적으면 `ABCDE-23456` 꼴 코드가 나온다.
 3. 한 사람이 메인 주소에서 "처음이에요"를 켜고 초대 코드와 다섯 가지 정보로 방을 만들고, 상대는 초대 코드 없이 들어온다.
 

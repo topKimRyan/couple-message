@@ -9,7 +9,7 @@
 | 항목 | 선택 | 이유 |
 | --- | --- | --- |
 | DB·로그인·푸시 | Firebase Spark(무료) — Firestore, Auth, Cloud Messaging | 무료, 결제 수단 불필요 |
-| 호스팅 | Cloudflare Worker 정적 파일(Workers Static Assets) | Worker 하나가 화면과 API를 같은 주소에서 서빙. GitHub 연결로 자동 배포. 주소 `couple-mailbox.<서브도메인>.workers.dev`는 만료되지 않음 |
+| 호스팅 | Cloudflare Worker 정적 파일(Workers Static Assets) | Worker 하나가 화면과 API를 같은 주소에서 서빙. GitHub 연결로 자동 배포. 주소 `couple-message.2369-ryan.workers.dev`는 만료되지 않음 |
 | 서버 코드(잠금·알림) | **Cloudflare Workers Free** | Cloud Functions는 Blaze 요금제(카드 등록)가 필요. Workers는 카드 없이 무료 |
 | 프론트엔드 | **Vite + Vanilla TypeScript** | 의존성 최소화. 3년 방치해도 빌드·실행이 깨질 여지가 적음 |
 | 암호 | 브라우저 Web Crypto(PBKDF2-SHA256, AES-GCM) | 외부 암호 라이브러리 불필요, 모든 최신 브라우저 지원 |
@@ -190,7 +190,7 @@ tests/  crypto 단위 테스트(vitest), 보안 규칙 테스트(Firestore 에�
 - [x] 서버 코드 실행 방식: Cloudflare Workers
 - [ ] 공동 운영자: 둘 경우 Firestore `config/admins`의 `emails`에 추가만 하면 된다(규칙 재배포 불필요)
 - [ ] 오래 안 쓰는 방: 무기한 보관할지, 기한을 둘지
-- [x] 서비스 이름과 주소: `couple-mailbox` → `couple-mailbox.<서브도메인>.workers.dev`
+- [x] 서비스 이름과 주소: `couple-message` → `couple-message.2369-ryan.workers.dev`
 
 ## 9. 구현 로드맵
 

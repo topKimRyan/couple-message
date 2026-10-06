@@ -1,4 +1,5 @@
 // Firebase 서비스 계정 키로 JWT를 서명한다. firebase-admin 없이 Web Crypto만 사용.
+import { globalFetch } from './fetch';
 
 export interface ServiceAccount {
   project_id: string;
@@ -68,7 +69,7 @@ export class AccessTokenProvider {
 
   constructor(
     private readonly sa: ServiceAccount,
-    private readonly fetchFn: typeof fetch = fetch,
+    private readonly fetchFn: typeof fetch = globalFetch,
   ) {}
 
   async get(): Promise<string> {

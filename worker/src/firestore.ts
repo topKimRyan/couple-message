@@ -1,4 +1,5 @@
 // Firestore REST API 최소 클라이언트. https://firebase.google.com/docs/firestore/reference/rest
+import { globalFetch } from './fetch';
 
 export type FieldValue = string | number | boolean | null | Date | FieldValue[] | { [key: string]: FieldValue };
 
@@ -72,7 +73,7 @@ export class Firestore {
   constructor(
     projectId: string,
     private readonly accessToken: () => Promise<string>,
-    private readonly fetchFn: typeof fetch = fetch,
+    private readonly fetchFn: typeof fetch = globalFetch,
     /** 에뮬레이터 시험용으로만 바꾼다. */
     private readonly baseUrl = 'https://firestore.googleapis.com',
   ) {

@@ -1,5 +1,6 @@
 // FCM HTTP v1 으로 웹 푸시 보내기. https://firebase.google.com/docs/cloud-messaging/send/v1-api
 // 알림 내용은 web/public/sw.js 가 data 를 읽어 직접 띄운다(편지 본문은 절대 넣지 않는다).
+import { globalFetch } from './fetch';
 
 export type PushType = 'letter' | 'contacts' | 'new-device';
 
@@ -30,7 +31,7 @@ export async function sendFcm(
   accessToken: () => Promise<string>,
   token: string,
   message: PushMessage,
-  fetchFn: typeof fetch = fetch,
+  fetchFn: typeof fetch = globalFetch,
 ): Promise<PushResult> {
   const res = await fetchFn(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
     method: 'POST',

@@ -1,5 +1,6 @@
 // Firebase ID 토큰 검증. https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
 import type { Side } from './store';
+import { globalFetch } from './fetch';
 
 export interface RoomClaims {
   roomId: string;
@@ -62,7 +63,7 @@ export class IdTokenVerifier {
 
   constructor(
     private readonly projectId: string,
-    private readonly fetchFn: typeof fetch = fetch,
+    private readonly fetchFn: typeof fetch = globalFetch,
     private readonly now: () => number = Date.now,
   ) {}
 

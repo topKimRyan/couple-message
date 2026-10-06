@@ -62,13 +62,16 @@ function renderSignIn(message = '') {
     try {
       await signInWithPopup(adminAuth, new GoogleAuthProvider());
     } catch (err) {
-      const code = (err as { code?: string }).code;
+      const code = (err as { code?: string }).code ?? 'unknown';
       if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        status.textContent = '로그인하지 못했어요. 팝업 차단을 확인해 주세요.';
+        status.textContent = signInErrorText(code);
       }
       button.disabled = false;
     }
   };
+  if (isInAppBrowser()) {
+    status.textContent = '카카오톡·인스타그램 같은 앱 안의 브라우저에서는 구글 로그인이 막혀요. Safari나 Chrome에서 열어 주세요.';
+  }
   const section = el('section', { className: 'card login' }, status, button);
   if (import.meta.env.VITE_USE_EMULATORS === 'true') section.append(emulatorSignIn(status));
   root.replaceChildren(header(null), section);
@@ -96,6 +99,28 @@ function emulatorSignIn(status: HTMLElement): HTMLElement {
     });
   };
   return form;
+}
+
+function isInAppBrowser(): boolean {
+  return /KAKAOTALK|Instagram|FBAN|FBAV|Line\/|NAVER|DaumApps|everytimeApp/i.test(navigator.userAgent);
+}
+
+/** 원인별 안내. 모르는 오류는 코드를 그대로 보여 줘서 물어볼 수 있게 한다. */
+function signInErrorText(code: string): string {
+  switch (code) {
+    case 'auth/unauthorized-domain':
+      return `Firebase 콘솔 → Authentication → 설정 → 승인된 도메인에 ${location.hostname} 을(를) 추가해야 해요.`;
+    case 'auth/operation-not-allowed':
+      return 'Firebase 콘솔 → Authentication → 로그인 방법에서 Google 을 사용 설정해야 해요.';
+    case 'auth/popup-blocked':
+      return '브라우저가 팝업을 막았어요. 주소창의 팝업 차단 표시에서 허용한 뒤 다시 눌러 주세요.';
+    case 'auth/network-request-failed':
+      return '인터넷 연결을 확인해 주세요.';
+    case 'auth/web-storage-unsupported':
+      return '이 브라우저 설정(쿠키·저장소 차단)으로는 로그인할 수 없어요. 시크릿 모드가 아닌 일반 창에서 열어 주세요.';
+    default:
+      return `로그인하지 못했어요. (${code})`;
+  }
 }
 
 async function load(): Promise<{ rooms: RoomRow[]; invites: InviteRow[] }> {

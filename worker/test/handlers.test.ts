@@ -69,7 +69,6 @@ class MemoryStore implements Store {
 }
 
 const ROOM = 'ab'.repeat(32);
-const ORIGIN = 'https://mailbox.web.app';
 const DEVICE = '0f8e2c1a-1111-4222-8333-944455556666';
 const FCM = (n: string) => `fcm-token-${n}-${'x'.repeat(20)}`;
 
@@ -104,17 +103,16 @@ beforeEach(() => {
     },
     hashIp: async (bucket) => `h(${bucket})`,
     defer: (work) => deferred.push(work),
-    allowedOrigins: [ORIGIN],
     now: () => new Date(clock),
   };
 });
 
-function call(path: string, body: unknown, opts: { origin?: string; ip?: string; bearer?: string } = {}) {
-  const headers: Record<string, string> = { origin: opts.origin ?? ORIGIN, 'content-type': 'application/json' };
+function call(path: string, body: unknown, opts: { ip?: string; bearer?: string } = {}) {
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (opts.ip !== undefined) headers['cf-connecting-ip'] = opts.ip;
   else headers['cf-connecting-ip'] = '203.0.113.7';
   if (opts.bearer) headers.authorization = `Bearer ${opts.bearer}`;
-  return handle(new Request(`https://worker.dev${path}`, { method: 'POST', headers, body: JSON.stringify(body) }), deps);
+  return handle(new Request(`https://worker.dev/api${path}`, { method: 'POST', headers, body: JSON.stringify(body) }), deps);
 }
 
 const flush = () => Promise.all(deferred);
@@ -123,7 +121,6 @@ describe('/create', () => {
   it('초대 코드로 방을 만들고 토큰을 준다', async () => {
     const res = await call('/create', { inviteCode: 'kimlee-2026', roomId: ROOM, side: 'a', deviceId: DEVICE });
     expect(res.status).toBe(200);
-    expect(res.headers.get('access-control-allow-origin')).toBe(ORIGIN);
     const { token } = (await res.json()) as { token: string };
     expect(JSON.parse(token)).toEqual({ uid: roomUid(ROOM, 'a'), claims: { roomId: ROOM, side: 'a' } });
     expect(store.rooms.has(ROOM)).toBe(true);
@@ -313,18 +310,18 @@ describe('/admin/delete-room', () => {
   });
 });
 
-describe('라우팅과 CORS', () => {
-  it('허용 안 된 출처에는 CORS 헤더 없음', async () => {
-    store.rooms.add(ROOM);
-    const res = await call('/login', { roomId: ROOM, side: 'a', deviceId: DEVICE }, { origin: 'https://evil.example' });
-    expect(res.headers.get('access-control-allow-origin')).toBeNull();
+describe('라우팅', () => {
+  it('없는 경로, POST 아닌 요청, 잘못된 본문', async () => {
+    expect((await call('/nope', {})).status).toBe(404);
+    expect((await handle(new Request('https://w.dev/login', { method: 'POST', body: '{}' }), deps)).status).toBe(404);
+    expect((await handle(new Request('https://w.dev/api/login'), deps)).status).toBe(405);
+    const bad = await handle(new Request('https://w.dev/api/login', { method: 'POST', body: 'not json' }), deps);
+    expect(bad.status).toBe(400);
   });
 
-  it('preflight, 없는 경로, 잘못된 본문', async () => {
-    const pre = await handle(new Request('https://w.dev/login', { method: 'OPTIONS', headers: { origin: ORIGIN } }), deps);
-    expect(pre.status).toBe(204);
-    expect((await call('/nope', {})).status).toBe(404);
-    const bad = await handle(new Request('https://w.dev/login', { method: 'POST', body: 'not json' }), deps);
-    expect(bad.status).toBe(400);
+  it('API 응답은 캐시하지 않는다', async () => {
+    store.rooms.add(ROOM);
+    const res = await call('/login', { roomId: ROOM, side: 'a', deviceId: DEVICE });
+    expect(res.headers.get('cache-control')).toBe('no-store');
   });
 });

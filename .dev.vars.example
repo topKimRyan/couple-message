@@ -1,3 +1,2 @@
-# .dev.vars 로 복사. 서비스 계정 JSON을 한 줄로 넣는다.
+# .dev.vars 로 복사(커밋하지 않음). 서비스 계정 JSON을 한 줄로 넣는다.
 FIREBASE_SERVICE_ACCOUNT={"project_id":"...","client_email":"...","private_key":"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"}
-ALLOWED_ORIGINS=http://localhost:5173

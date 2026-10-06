@@ -8,7 +8,8 @@
 
 | 항목 | 선택 | 이유 |
 | --- | --- | --- |
-| 호스팅·DB·로그인 | Firebase Spark(무료) — Hosting, Firestore, Auth, Cloud Messaging | 무료, `이름.web.app` 주소가 만료되지 않음 |
+| DB·로그인·푸시 | Firebase Spark(무료) — Firestore, Auth, Cloud Messaging | 무료, 결제 수단 불필요 |
+| 호스팅 | Cloudflare Worker 정적 파일(Workers Static Assets) | Worker 하나가 화면과 API를 같은 주소에서 서빙. GitHub 연결로 자동 배포. 주소 `couple-mailbox.<서브도메인>.workers.dev`는 만료되지 않음 |
 | 서버 코드(잠금·알림) | **Cloudflare Workers Free** | Cloud Functions는 Blaze 요금제(카드 등록)가 필요. Workers는 카드 없이 무료 |
 | 프론트엔드 | **Vite + Vanilla TypeScript** | 의존성 최소화. 3년 방치해도 빌드·실행이 깨질 여지가 적음 |
 | 암호 | 브라우저 Web Crypto(PBKDF2-SHA256, AES-GCM) | 외부 암호 라이브러리 불필요, 모든 최신 브라우저 지원 |
@@ -118,7 +119,7 @@ function inRoom(roomId) { return request.auth != null && request.auth.token.room
 - `/register-push`, `/notify`는 `Authorization: Bearer <Firebase ID 토큰>`. Worker가 Google 공개키(JWK)로 서명과 `roomId·side` 클레임을 확인한다.
 - 푸시는 데이터 전용 웹 푸시이고, 서비스 워커(`web/public/sw.js`)가 제목·본문만 띄운다. 편지 내용은 푸시에 절대 넣지 않는다.
 - 실패 응답은 "정보가 맞지 않아요" 하나로 통일(방 없음과 형식 오류를 구분하지 않음).
-- CORS는 `https://<이름>.web.app`만 허용.
+- 모든 API는 `/api/*`. 화면과 같은 주소라 CORS가 필요 없다(`wrangler.toml`의 `run_worker_first`).
 - Secret: `FIREBASE_SERVICE_ACCOUNT`(JSON) 하나. `wrangler secret put`으로 설정. 운영자 목록은 Firestore `config/admins`.
 
 ## 5. 프론트엔드
@@ -171,7 +172,7 @@ tests/  crypto 단위 테스트(vitest), 보안 규칙 테스트(Firestore 에�
 | 서비스 | 무료 한도(개발 전 재확인) | 예상 사용 |
 | --- | --- | --- |
 | Firestore (Spark) | 하루 읽기 5만, 쓰기 2만, 저장 1GiB | 수십 쌍이면 하루 수천 회 이하 |
-| Firebase Hosting | 저장 10GB, 전송 월 10GB 수준 | 정적 파일 수 MB |
+| Cloudflare Workers 정적 파일 | 정적 파일 요청은 무료·무제한(Worker 요청 한도에 안 들어감) | 정적 파일 수 MB |
 | Firebase Auth (custom token) | 무료 | — |
 | FCM | 무료 | — |
 | Cloudflare Workers Free | 하루 10만 요청 | 하루 수백 회 |
@@ -189,13 +190,13 @@ tests/  crypto 단위 테스트(vitest), 보안 규칙 테스트(Firestore 에�
 - [x] 서버 코드 실행 방식: Cloudflare Workers
 - [ ] 공동 운영자: 둘 경우 Firestore `config/admins`의 `emails`에 추가만 하면 된다(규칙 재배포 불필요)
 - [ ] 오래 안 쓰는 방: 무기한 보관할지, 기한을 둘지
-- [ ] 서비스 이름과 주소: `이름.web.app` (Firebase 프로젝트 ID가 주소가 되므로 프로젝트 생성 전에 정해야 함)
+- [x] 서비스 이름과 주소: `couple-mailbox` → `couple-mailbox.<서브도메인>.workers.dev`
 
 ## 9. 구현 로드맵
 
 | 단계 | 작업 | 완료 기준 |
 | --- | --- | --- |
-| 1. 뼈대 | Firebase 프로젝트·Hosting·Worker 골격, `crypto.ts`, 로그인 화면, `/create`·`/login`, custom token 로그인 | 두 기기에서 각자 입력해 같은 방에 들어감. crypto 고정 벡터 테스트 통과 |
+| 1. 뼈대 | Firebase 프로젝트·Worker 골격, `crypto.ts`, 로그인 화면, `/create`·`/login`, custom token 로그인 | 두 기기에서 각자 입력해 같은 방에 들어감. crypto 고정 벡터 테스트 통과 |
 | 2. 핵심 기능 | 연락처 칸, 편지 쓰기·목록·읽음, 암호화 저장, `firestore.rules` | 에뮬레이터 규칙 테스트: 다른 방 접근·목록 조회·상대 연락처 수정·편지 위조 모두 거부 |
 | 3. 알림과 앱화 | manifest·서비스 워커, 홈 화면 안내, FCM 등록, `/notify`, 새 기기 알림, 잠금 | 아이폰 홈 화면 앱·안드로이드 크롬에서 푸시 수신. 5회 실패 후 잠금 확인 |
 | 4. 운영 | 운영자 화면(초대 발급, 방 현황, 삭제), `/admin/delete-room` | 운영자 외 계정으로 admin 접근 불가. 삭제 후 하위 문서까지 사라짐 |

@@ -2,6 +2,7 @@
 // custom token 은 서명 없이 만들고(Auth 에뮬레이터는 서명을 검사하지 않음), 에뮬레이터가 주는
 // 서명 없는 ID 토큰은 내용만 확인한다. 푸시는 실제로 보내지 않고 콘솔에 찍는다.
 // 실행: npm run dev:emulator -w worker  (먼저 루트에서 npm run emulators)
+// 웹 개발 서버(vite)가 /api 를 이 서버(8787)로 넘겨 준다.
 import { createServer } from 'node:http';
 import { Firestore } from '../src/firestore';
 import { base64url } from '../src/google-auth';
@@ -45,7 +46,6 @@ const deps: Deps = {
   },
   hashIp: async (bucket) => bucket.replace(/[^0-9a-zA-Z]/g, '_'),
   defer: (work) => void work.catch((err) => console.error(err)),
-  allowedOrigins: ['http://localhost:5173'],
 };
 
 createServer(async (req, res) => {

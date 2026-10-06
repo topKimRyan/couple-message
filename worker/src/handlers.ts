@@ -13,7 +13,6 @@ export interface Deps {
   hashIp: (bucket: string) => Promise<string>;
   /** 응답을 보낸 뒤에도 마저 할 일 (ctx.waitUntil). */
   defer: (work: Promise<unknown>) => void;
-  allowedOrigins: string[];
   now?: () => Date;
 }
 
@@ -243,36 +242,26 @@ async function handleDeleteRoom(req: Req, deps: Deps) {
   return { ok: true };
 }
 
+// 화면 파일과 같은 주소에서 서빙되므로(wrangler.toml 의 run_worker_first) CORS 가 필요 없다.
 const routes: Record<string, (req: Req, deps: Deps) => Promise<unknown>> = {
-  '/create': handleCreate,
-  '/login': handleLogin,
-  '/register-push': handleRegisterPush,
-  '/notify': handleNotify,
-  '/admin/delete-room': handleDeleteRoom,
+  '/api/create': handleCreate,
+  '/api/login': handleLogin,
+  '/api/register-push': handleRegisterPush,
+  '/api/notify': handleNotify,
+  '/api/admin/delete-room': handleDeleteRoom,
 };
 
-function corsHeaders(origin: string | null, deps: Deps): Record<string, string> {
-  if (!origin || !deps.allowedOrigins.includes(origin)) return {};
-  return {
-    'access-control-allow-origin': origin,
-    'access-control-allow-methods': 'POST, OPTIONS',
-    'access-control-allow-headers': 'content-type, authorization',
-    'access-control-max-age': '86400',
-    vary: 'origin',
-  };
-}
-
-function json(status: number, data: unknown, headers: Record<string, string>): Response {
-  return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...headers } });
+function json(status: number, data: unknown): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+  });
 }
 
 export async function handle(request: Request, deps: Deps): Promise<Response> {
-  const cors = corsHeaders(request.headers.get('origin'), deps);
-  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-
   const route = routes[new URL(request.url).pathname];
-  if (!route) return json(404, { error: 'not_found', message: '없는 주소예요.' }, cors);
-  if (request.method !== 'POST') return json(405, { error: 'method', message: 'POST만 받아요.' }, cors);
+  if (!route) return json(404, { error: 'not_found', message: '없는 주소예요.' });
+  if (request.method !== 'POST') return json(405, { error: 'method', message: 'POST만 받아요.' });
 
   try {
     const body = await request.json().catch(() => null);
@@ -283,10 +272,10 @@ export async function handle(request: Request, deps: Deps): Promise<Response> {
       ip: request.headers.get('cf-connecting-ip') ?? '',
       bearer: auth?.startsWith('Bearer ') ? auth.slice(7) : null,
     };
-    return json(200, await route(req, deps), cors);
+    return json(200, await route(req, deps));
   } catch (err) {
-    if (err instanceof HttpError) return json(err.status, { error: err.code, message: err.message }, cors);
+    if (err instanceof HttpError) return json(err.status, { error: err.code, message: err.message });
     console.error(err);
-    return json(500, { error: 'server', message: '잠시 후 다시 시도해 주세요.' }, cors);
+    return json(500, { error: 'server', message: '잠시 후 다시 시도해 주세요.' });
   }
 }

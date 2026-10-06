@@ -6,15 +6,17 @@
 - 설계 문서: [docs/design.md](docs/design.md)
 - 설치와 배포: [docs/setup.md](docs/setup.md)
 
-구성: Firebase(Hosting, Firestore, Auth, Cloud Messaging) + Cloudflare Workers(로그인 잠금·푸시 전송) + Vite/Vanilla TypeScript.
+구성: Cloudflare Worker 하나(화면 파일 + `/api` — 로그인 잠금, 푸시 전송, 방 삭제) + Firebase(Firestore, Auth, Cloud Messaging) + Vite/Vanilla TypeScript.
+GitHub `main`에 push 하면 Cloudflare가 자동으로 빌드·배포한다(`wrangler.toml`).
 
 ## 구조
 
 ```
 web/       PWA (로그인, 방 화면) + 운영자 화면(/admin) — Vite + TypeScript
-worker/    Cloudflare Worker (/create, /login: 잠금 확인 후 Firebase custom token 발급, /register-push, /notify: 웹 푸시)
+worker/    Cloudflare Worker 코드 (/api/create, /api/login: 잠금 확인 후 Firebase custom token 발급, /api/register-push, /api/notify: 웹 푸시, /api/admin/delete-room)
 rules-test/ 보안 규칙 테스트 (Firestore 에뮬레이터)
-firestore.rules, firebase.json
+firestore.rules  보안 규칙 (Firebase 콘솔에 붙여 넣어 게시)
+wrangler.toml    Cloudflare 배포 설정
 ```
 
 ## 진행 상황

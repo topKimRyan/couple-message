@@ -1,0 +1,17 @@
+# Cloudflare Worker 하나가 화면 파일(web/dist)과 API(/api/*)를 같이 서빙한다.
+# Cloudflare 대시보드에서 이 GitHub 저장소를 연결하면 main 에 push 될 때마다
+#   빌드: npm run build   →   배포: npx wrangler deploy   (이 파일을 읽는다)
+name = "couple-mailbox"
+main = "worker/src/index.ts"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./web/dist"
+# /api 로 시작하는 요청만 Worker 코드로, 나머지는 화면 파일로. (/admin 은 admin.html 로 자동 연결)
+run_worker_first = ["/api/*"]
+
+[observability]
+enabled = true
+
+# 비밀값은 여기에 쓰지 않는다. 대시보드 → Worker → 설정 → 변수 및 비밀에 FIREBASE_SERVICE_ACCOUNT 를 비밀(Secret)로 넣는다.
+# 로컬 wrangler dev 는 루트의 .dev.vars 를 읽는다(.dev.vars.example 참고).

@@ -6,10 +6,8 @@ import { IdTokenVerifier } from './id-token';
 import { FirestoreStore } from './store';
 
 export interface Env {
-  /** 서비스 계정 키 JSON 전체. `wrangler secret put FIREBASE_SERVICE_ACCOUNT` */
+  /** 서비스 계정 키 JSON 전체. Cloudflare 대시보드의 변수 및 비밀(또는 `wrangler secret put`)로 넣는다. */
   FIREBASE_SERVICE_ACCOUNT: string;
-  /** 쉼표로 구분한 허용 출처. 예: https://이름.web.app */
-  ALLOWED_ORIGINS: string;
 }
 
 type SharedDeps = Omit<Deps, 'defer'>;
@@ -35,7 +33,6 @@ function depsFor(env: Env): SharedDeps {
     sendPush: (fcmToken, message) => sendFcm(sa.project_id, accessToken, fcmToken, message),
     // 서비스 계정 비밀키를 소금으로 써서, 저장된 키로 IP를 거꾸로 알아낼 수 없게 한다.
     hashIp: (bucket) => sha256Hex(`${sa.private_key}|${bucket}`),
-    allowedOrigins: env.ALLOWED_ORIGINS.split(',').map((s) => s.trim()),
   };
   cached = { raw: env.FIREBASE_SERVICE_ACCOUNT, deps };
   return deps;

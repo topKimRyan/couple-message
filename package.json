@@ -7,10 +7,12 @@
     "rules-test"
   ],
   "scripts": {
+    "build": "npm run build -w web",
+    "deploy": "npm run build && wrangler deploy",
+    "dev:worker": "wrangler dev",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-couple-mailbox",
     "test": "npm test --workspaces --if-present",
     "test:rules": "npm run test:rules -w rules-test",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "build": "npm run build -w web",
-    "emulators": "firebase emulators:start --only auth,firestore --project demo-couple-mailbox"
+    "typecheck": "npm run typecheck --workspaces --if-present"
   }
 }

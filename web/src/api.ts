@@ -14,7 +14,8 @@ async function post<T>(path: string, body: unknown, idToken?: string): Promise<T
   if (idToken) headers.authorization = `Bearer ${idToken}`;
   let res: Response;
   try {
-    res = await fetch(`${import.meta.env.VITE_WORKER_URL}${path}`, {
+    // 화면과 같은 주소의 Worker. 로컬 개발에서는 vite 가 /api 를 localhost:8787 로 넘긴다.
+    res = await fetch(`/api${path}`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),

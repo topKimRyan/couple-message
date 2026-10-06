@@ -1,24 +1,47 @@
+/* 커플 우체통 — 편지지·우체통 테마
+   종이 바탕, 명조 본문(고운바탕) + 손글씨 제목(나눔펜), 우표·항공우편·밀랍 봉인 장식 */
+
 :root {
-  --bg: #fbf6ef;
-  --card: #ffffff;
-  --ink: #2b2420;
-  --muted: #7a6d64;
-  --accent: #c8553d;
-  --accent-ink: #ffffff;
-  --line: #e8ddd1;
-  --danger: #b3261e;
+  --desk: #efe5d3;
+  --paper: #fffaf1;
+  --paper-2: #f6ecdc;
+  --air: #f3f6fa;
+  --ink: #3a2e27;
+  --muted: #8a7764;
+  --rule: #e6d8c3;
+  --line: #dac8ae;
+  --red: #b8432f;
+  --red-ink: #fff8ef;
+  --blue: #2f5a85;
+  --danger: #a8321f;
+  --shadow: 0 1px 0 rgb(90 60 30 / 6%), 0 8px 18px -10px rgb(90 60 30 / 45%);
+  --font-body: 'Gowun Batang', 'Noto Serif KR', 'AppleMyungjo', 'Batang', serif;
+  --font-hand: 'Nanum Pen Script', 'Gowun Batang', cursive;
+  --airmail: repeating-linear-gradient(
+    135deg,
+    var(--red) 0 9px,
+    transparent 9px 15px,
+    var(--blue) 15px 24px,
+    transparent 24px 30px
+  );
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1d1916;
-    --card: #2a2420;
-    --ink: #f3ece4;
-    --muted: #b5a89d;
-    --accent: #e0765c;
-    --line: #3e3530;
-    --danger: #f2b8b5;
+    --desk: #1c1714;
+    --paper: #2a231e;
+    --paper-2: #231d19;
+    --air: #252a31;
+    --ink: #efe5d6;
+    --muted: #b3a18c;
+    --rule: #3b3129;
+    --line: #4a3d33;
+    --red: #e0765c;
+    --red-ink: #2a1712;
+    --blue: #8fb3dd;
+    --danger: #f2a99a;
+    --shadow: 0 1px 0 rgb(0 0 0 / 30%), 0 10px 20px -12px rgb(0 0 0 / 80%);
   }
 }
 
@@ -26,109 +49,73 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
-  line-height: 1.5;
+  background-color: var(--desk);
+  /* 은은한 종이 결 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .3 0 0 0 0 .2 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
 }
 
 .app {
   max-width: 480px;
   margin: 0 auto;
-  padding: max(24px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+  padding: max(28px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom));
+}
+
+/* ── 글씨 ─────────────────────────────── */
+
+h1,
+h2 {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 1.9rem;
+}
+
+h3 {
+  margin: 0 0 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.brand {
+  margin-bottom: 22px;
 }
 
 .brand h1 {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 2.7rem;
 }
 
 .brand p {
-  margin: 4px 0 20px;
+  margin: 2px 0 0;
   color: var(--muted);
 }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 20px 16px;
-}
-
-.login {
-  display: grid;
-  gap: 14px;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-label {
-  display: grid;
-  gap: 4px;
-  font-size: 0.9rem;
-  color: var(--muted);
-}
-
-input:not([type='checkbox']) {
-  width: 100%;
-  min-width: 0;
-  font: inherit;
-  font-size: 16px; /* iOS 자동 확대 방지 */
-  color: var(--ink);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-
-.toggle {
+.brand-mark {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--ink);
+  gap: 10px;
 }
 
-[hidden] {
-  display: none !important;
-}
-
-button {
-  font: inherit;
-  font-weight: 600;
-  border: 0;
-  border-radius: 12px;
-  padding: 12px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.6;
-}
-
-button.link {
-  display: block;
-  margin: 24px auto 0;
-  background: none;
-  color: var(--muted);
-  font-weight: 400;
-  text-decoration: underline;
-}
-
-.message:empty {
-  display: none;
-}
-
-.message {
-  margin: 0;
-  color: var(--danger);
+.brand-mark svg {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
 }
 
 .hint {
@@ -137,50 +124,162 @@ button.link {
   color: var(--muted);
 }
 
-.dday {
-  font-weight: 600;
-  color: var(--accent) !important;
-}
-
-h2 {
-  margin: 0 0 12px;
-  font-size: 1.05rem;
-}
-
-h3 {
-  margin: 0 0 4px;
-  font-size: 0.85rem;
+.meta {
+  margin: 0;
+  font-size: 0.78rem;
   color: var(--muted);
-  font-weight: 600;
+}
+
+.empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.message {
+  margin: 0;
+  color: var(--danger);
+}
+
+.message:empty {
+  display: none;
+}
+
+.message.ok {
+  color: var(--ink);
+}
+
+/* ── 종이 카드 ─────────────────────────── */
+
+.card {
+  position: relative;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 18px 16px;
+  box-shadow: var(--shadow);
 }
 
 section + section,
 .card + section,
 section + .card {
-  margin-top: 20px;
+  margin-top: 26px;
+}
+
+/* ── 입력 ─────────────────────────────── */
+
+label {
+  display: grid;
+  gap: 2px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input:not([type='checkbox']),
+textarea {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px; /* iOS 자동 확대 방지 */
+  color: var(--ink);
+}
+
+/* 편지지 위에 쓰는 줄 */
+input:not([type='checkbox']) {
+  background: transparent;
+  border: 0;
+  border-bottom: 1.5px solid var(--line);
+  border-radius: 0;
+  padding: 8px 2px 6px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+input:not([type='checkbox']):focus {
+  outline: none;
+  border-bottom-color: var(--red);
+  box-shadow: 0 1.5px 0 var(--red);
+}
+
+input[type='checkbox'] {
+  accent-color: var(--red);
+  width: 18px;
+  height: 18px;
 }
 
 textarea {
-  width: 100%;
-  font: inherit;
-  font-size: 16px;
-  color: var(--ink);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
+  display: block;
+  border: 0;
   resize: vertical;
+  padding: 0 2px;
+  line-height: 28px;
+  background: repeating-linear-gradient(to bottom, transparent 0 27px, var(--rule) 27px 28px) local;
+}
+
+textarea:focus {
+  outline: none;
+}
+
+.edit textarea,
+.composer textarea {
+  min-height: 84px;
+}
+
+/* ── 버튼 ─────────────────────────────── */
+
+button {
+  font: inherit;
+  font-weight: 700;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  background: var(--red);
+  color: var(--red-ink);
+  cursor: pointer;
+  /* 우표 테두리처럼 바느질 선 */
+  outline: 1.5px dashed color-mix(in srgb, var(--red-ink) 55%, transparent);
+  outline-offset: -5px;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 button.small {
-  padding: 6px 14px;
-  font-size: 0.9rem;
+  padding: 7px 14px;
+  font-size: 0.88rem;
 }
 
 button.secondary {
   background: transparent;
   color: var(--ink);
   border: 1px solid var(--line);
+  outline: none;
+}
+
+button.danger {
+  background: var(--danger);
+  color: var(--paper);
+}
+
+button.link {
+  display: block;
+  margin: 26px auto 0;
+  padding: 4px;
+  background: none;
+  color: var(--muted);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  outline: none;
 }
 
 button.link.inline {
@@ -194,35 +293,148 @@ button.link.inline {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .actions .meta {
   margin-right: auto;
 }
 
-.meta {
-  margin: 4px 0 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
+/* ── 로그인: 봉투 ─────────────────────── */
 
-.empty {
-  margin: 0;
-  color: var(--muted);
-}
-
-.edit {
+.login {
   display: grid;
-  gap: 4px;
-  margin-bottom: 16px;
+  gap: 16px;
+}
+
+.envelope {
+  padding-top: 64px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* 항공우편 줄무늬 */
+.envelope::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 7px;
+  background: var(--airmail);
+}
+
+/* 봉투 덮개 */
+.envelope::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 0;
+  right: 0;
+  height: 42px;
+  background: var(--paper-2);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  border-bottom: 1px solid var(--line);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+/* ── 방 머리말: 우표 ──────────────────── */
+
+.stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0 6px;
+}
+
+/* 가장자리 구멍은 바깥 상자의 점무늬, 안쪽은 종이로 덮는다 */
+.stamp {
+  display: inline-block;
+  padding: 5px;
+  background:
+    radial-gradient(circle, var(--desk) 2.6px, transparent 3px) -5px -5px / 10px 10px,
+    var(--paper);
+  filter: drop-shadow(0 3px 4px rgb(90 60 30 / 22%));
+  transform: rotate(-2deg);
+}
+
+.stamp + .stamp {
+  transform: rotate(1.5deg);
+}
+
+.stamp-inner {
+  display: grid;
+  justify-items: center;
+  min-width: 96px;
+  padding: 6px 12px 4px;
+  background: var(--paper);
+  border: 1.5px solid var(--red);
+}
+
+.stamp-caption {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.stamp-value {
+  font-family: var(--font-hand);
+  font-weight: 400;
+  font-size: 2.3rem;
+  line-height: 1.05;
+  color: var(--red);
+}
+
+.stamp.blue .stamp-inner {
+  border-color: var(--blue);
+}
+
+.stamp.blue .stamp-value {
+  color: var(--blue);
+}
+
+/* ── 안내 엽서 ─────────────────────────── */
+
+.notice {
+  margin-bottom: 22px;
+  padding-top: 22px;
+  background:
+    var(--airmail) top / 100% 5px no-repeat,
+    var(--paper);
+}
+
+.notice-text {
+  margin: 0;
+}
+
+/* ── 연락처: 색인 카드 ────────────────── */
+
+.contacts {
+  padding-top: 16px;
+}
+
+/* 색인 카드 머리의 빨간 줄 */
+.contacts h2 {
+  margin: 0 -16px 16px;
+  padding: 0 16px 6px;
+  border-bottom: 1.5px solid var(--red);
 }
 
 .contacts .contact + .contact {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--line);
+  border-top: 1px dashed var(--line);
 }
 
 .contact-text,
@@ -232,46 +444,125 @@ button.link.inline {
   overflow-wrap: anywhere;
 }
 
+.contact-text {
+  font-size: 1.05rem;
+}
+
 .contact.mine > div > button {
   margin-top: 8px;
 }
 
-.letters {
-  list-style: none;
-  margin: 0 0 16px;
-  padding: 0;
+.edit {
   display: grid;
-  gap: 10px;
+  gap: 6px;
+  margin-bottom: 16px;
 }
 
+/* ── 편지 ─────────────────────────────── */
+
+.letters {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+
+/* 줄 쳐진 편지지. 글줄(28px)과 밑줄이 맞도록 배경을 패딩만큼 내린다 */
 .letter {
-  max-width: 88%;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: var(--card);
-  border: 1px solid var(--line);
+  position: relative;
+  max-width: 92%;
+  padding: 14px 18px 10px;
+  line-height: 28px;
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 27px, var(--rule) 27px 28px);
+  background-position: 0 14px;
+  border-radius: 3px;
+  box-shadow: var(--shadow);
 }
 
 .letter.mine {
   justify-self: end;
-  background: color-mix(in srgb, var(--accent) 12%, var(--card));
+  transform: rotate(0.5deg);
 }
 
-.letter.fresh {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+/* 멀리서 온 편지: 항공우편 테두리 */
+.letter.theirs {
+  justify-self: start;
+  transform: rotate(-0.5deg);
+  background-color: var(--air);
+  border: 6px solid transparent;
+  border-image: var(--airmail) 6;
+  border-radius: 0;
+}
+
+.letter-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.signature {
+  font-family: var(--font-hand);
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.letter .meta {
+  text-align: right;
+  line-height: 1.4;
+}
+
+/* 새 편지: 밀랍 봉인 */
+.seal {
+  position: absolute;
+  z-index: 1;
+  top: -12px;
+  right: -10px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #db6a52, #9f2e1d 72%);
+  color: #fbe6da;
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  box-shadow: 0 2px 4px rgb(80 20 10 / 40%), inset 0 0 0 3px rgb(255 255 255 / 12%);
+  transform: rotate(-12deg);
 }
 
 .letters-section > .link {
-  margin: 0 auto 12px;
+  margin: 0 auto 14px;
+}
+
+.composer {
+  background:
+    var(--airmail) top / 100% 4px no-repeat,
+    var(--paper);
+  padding-top: 18px;
+}
+
+.composer-title {
+  margin: 0 0 6px;
+  font-family: var(--font-hand);
+  font-size: 1.9rem;
+  line-height: 1.2;
+  color: var(--muted);
 }
 
 .composer .message {
   margin-top: 8px;
 }
 
+/* ── 바닥글 ───────────────────────────── */
+
 .footer {
-  margin-top: 24px;
+  margin-top: 30px;
   text-align: center;
 }
 
@@ -279,22 +570,14 @@ button.link.inline {
   margin-top: 8px;
 }
 
-.notice {
-  margin-bottom: 20px;
-  border-color: var(--accent);
-}
+/* ── 운영자 화면: 우체국 장부 ─────────── */
 
-.notice-text {
-  margin: 0;
-}
-
-/* 운영자 화면 */
 .admin-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .row-head {
@@ -304,26 +587,28 @@ button.link.inline {
   gap: 8px;
 }
 
+/* 소인 */
 .badge {
   flex-shrink: 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--muted);
-  border: 1px solid var(--line);
+  border: 1.5px solid currentColor;
   border-radius: 999px;
-  padding: 2px 10px;
+  padding: 1px 10px;
+  transform: rotate(-3deg);
 }
 
 .badge.quiet {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--red);
 }
 
 .code {
   margin: 8px 0 0;
-  font-size: 1.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  font-variant-numeric: tabular-nums;
+  color: var(--red);
 }
 
 .code-inline {
@@ -334,13 +619,4 @@ button.link.inline {
   margin: 0 auto 0 0;
   font-size: 0.85rem;
   color: var(--danger);
-}
-
-button.danger {
-  background: var(--danger);
-  color: var(--card);
-}
-
-.message.ok {
-  color: var(--ink);
 }

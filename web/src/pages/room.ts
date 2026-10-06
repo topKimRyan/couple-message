@@ -5,6 +5,7 @@ import type { Session } from '../session';
 import { createContacts } from '../ui/contacts';
 import { el } from '../ui/dom';
 import { createLetters } from '../ui/letters';
+import { MAILBOX_SVG } from '../ui/mailbox-icon';
 import { createNotice } from '../ui/notice';
 
 interface Options {
@@ -13,12 +14,26 @@ interface Options {
 
 const PAGE_SIZE = 50;
 
-function graduationText(graduation: string | null): string {
-  if (!graduation) return '';
+/** 졸업 우표의 [작은 글씨, 큰 글씨]. */
+function graduationStamp(graduation: string | null): [string, string] | null {
+  if (!graduation) return null;
   const d = daysUntil(graduation);
-  if (d > 0) return `졸업까지 D-${d}`;
-  if (d === 0) return '오늘 졸업!';
-  return `졸업한 지 ${-d}일`;
+  if (d > 0) return ['졸업까지', `D-${d}`];
+  if (d === 0) return ['오늘', '졸업!'];
+  return ['졸업한 지', `${-d}일`];
+}
+
+function stamp(caption: string, value: string, tone = ''): HTMLElement {
+  return el(
+    'div',
+    { className: `stamp ${tone}`.trim() },
+    el(
+      'div',
+      { className: 'stamp-inner' },
+      el('span', { className: 'stamp-caption', textContent: caption }),
+      el('strong', { className: 'stamp-value', textContent: value }),
+    ),
+  );
 }
 
 export function renderRoom(root: HTMLElement, session: Session, { onLeave }: Options) {
@@ -29,7 +44,7 @@ export function renderRoom(root: HTMLElement, session: Session, { onLeave }: Opt
   const requested = new Set<string>();
 
   // 머리말: 디데이와 졸업일 설정
-  const dday = el('p', { className: 'dday' });
+  const dday = el('div', { className: 'dday stamps' });
   const gradInput = el('input', { type: 'date' });
   const gradForm = el(
     'form',
@@ -57,9 +72,10 @@ export function renderRoom(root: HTMLElement, session: Session, { onLeave }: Opt
   });
 
   function renderDday() {
-    dday.textContent = [`사귄 지 ${daysTogether(session.anniversary)}일`, graduationText(settings.graduation)]
-      .filter(Boolean)
-      .join(' · ');
+    const grad = graduationStamp(settings.graduation);
+    const together = stamp('사귄 지', `${daysTogether(session.anniversary)}일`);
+    if (grad) dday.replaceChildren(together, stamp(grad[0], grad[1], 'blue'));
+    else dday.replaceChildren(together);
   }
 
   async function saveGraduation(graduation: string | null) {
@@ -82,7 +98,7 @@ export function renderRoom(root: HTMLElement, session: Session, { onLeave }: Opt
   });
 
   root.replaceChildren(
-    el('header', { className: 'brand' }, el('h1', { textContent: '우리 우체통' }), dday, gradToggle),
+    el('header', { className: 'brand' }, el('div', { className: 'brand-mark', innerHTML: MAILBOX_SVG }, el('h1', { textContent: '우리 우체통' })), dday, gradToggle),
     gradForm,
     status,
     banner.root,

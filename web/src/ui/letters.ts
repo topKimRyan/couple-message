@@ -17,7 +17,14 @@ export function createLetters(session: Session, { onMore }: Options) {
   const counter = el('span', { className: 'meta' });
   const message = el('p', { className: 'message', role: 'alert' });
   const send = el('button', { type: 'submit', textContent: '보내기' });
-  const composer = el('form', { className: 'card composer' }, textarea, el('div', { className: 'actions' }, counter, send), message);
+  const composer = el(
+    'form',
+    { className: 'card composer' },
+    el('p', { className: 'composer-title', textContent: '편지 쓰기' }),
+    textarea,
+    el('div', { className: 'actions' }, counter, send),
+    message,
+  );
 
   const root = el('section', { className: 'letters-section' }, el('h2', { textContent: '안부 편지' }), more, empty, list, composer);
 
@@ -61,13 +68,20 @@ export function createLetters(session: Session, { onMore }: Options) {
       : fresh.has(letter.id)
         ? '새 편지'
         : '';
+    const isFresh = fresh.has(letter.id);
     return el(
       'li',
-      { className: `letter ${mine ? 'mine' : 'theirs'}${fresh.has(letter.id) ? ' fresh' : ''}` },
+      { className: `letter ${mine ? 'mine' : 'theirs'}${isFresh ? ' fresh' : ''}` },
+      isFresh && el('span', { className: 'seal', textContent: '새', title: '새 편지' }),
       letter.text === null
         ? el('p', { className: 'empty', textContent: '이 편지는 열 수 없어요.' })
         : el('p', { className: 'letter-text', textContent: letter.text }),
-      el('p', { className: 'meta', textContent: [formatDateTime(letter.sentAt), status].filter(Boolean).join(' · ') }),
+      el(
+        'div',
+        { className: 'letter-foot' },
+        el('span', { className: 'signature', textContent: mine ? '— 내가' : '— 너에게서' }),
+        el('p', { className: 'meta', textContent: [formatDateTime(letter.sentAt), status].filter(Boolean).join(' · ') }),
+      ),
     );
   }
 

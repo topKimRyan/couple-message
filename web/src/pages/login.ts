@@ -3,6 +3,7 @@ import { ApiError, createRoom, login } from '../api';
 import { deriveRoomKeys, InputError, type LoginInput } from '../crypto';
 import { auth } from '../firebase';
 import { getDeviceId, saveSession, type Session } from '../session';
+import { MAILBOX_SVG } from '../ui/mailbox-icon';
 
 interface Options {
   notice?: string;
@@ -11,13 +12,13 @@ interface Options {
 
 const TEMPLATE = `
   <header class="brand">
-    <h1>커플 우체통</h1>
+    <div class="brand-mark">${MAILBOX_SVG}<h1>커플 우체통</h1></div>
     <p>둘만 아는 다섯 가지로 언제든 다시 들어와요.</p>
   </header>
-  <form class="card login" novalidate>
+  <form class="card login envelope" novalidate>
     <div class="row">
-      <label>내 이름<input name="myName" autocomplete="off" required /></label>
-      <label>상대 이름<input name="partnerName" autocomplete="off" required /></label>
+      <label>내 이름<input name="myName" autocomplete="off" placeholder="예: 김민수" required /></label>
+      <label>상대 이름<input name="partnerName" autocomplete="off" placeholder="예: 이지은" required /></label>
     </div>
     <div class="row">
       <label>내 생일<input name="myBirth" type="date" required /></label>

@@ -2,7 +2,8 @@
 // - 웹 푸시: Worker(worker/src/fcm.ts)가 보낸 data 로 알림을 띄운다. 편지 내용은 들어 있지 않다.
 // - 오프라인: 페이지는 네트워크 우선, 빌드된 파일(/assets/)은 캐시 우선.
 
-const CACHE = 'couple-mailbox-v1';
+const CACHE = 'couple-mailbox-v2';
+const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -19,6 +20,25 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+
+  // 글꼴: 한 번 받으면 캐시에서. 오프라인에서도 편지지 글씨가 유지된다.
+  if (FONT_HOSTS.includes(url.hostname)) {
+    event.respondWith(
+      caches.match(request).then(
+        (hit) =>
+          hit ||
+          fetch(request).then((res) => {
+            if (res.ok || res.type === 'opaque') {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(request, copy));
+            }
+            return res;
+          }),
+      ),
+    );
+    return;
+  }
+
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {

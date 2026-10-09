@@ -91,12 +91,18 @@ service cloud.firestore {
           && request.resource.data.readAt == null
           && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.lastLetterAt == request.time;
 
-        // 받는 쪽이 읽음 표시를 한 번만 남긴다. 편지 수정·삭제는 불가.
+        // 받는 쪽이 읽음 표시를 한 번만 남긴다. 편지 삭제는 불가.
         allow update: if inRoom(roomId)
-          && resource.data.from != mySide()
-          && resource.data.readAt == null
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
-          && request.resource.data.readAt == request.time;
+          && ((resource.data.from != mySide()
+              && resource.data.readAt == null
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt'])
+              && request.resource.data.readAt == request.time)
+            // 보낸 쪽은 자기 편지의 내용(ct, iv)만 다시 쓸 수 있고, 고친 시각이 남는다.
+            || (resource.data.from == mySide()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ct', 'iv', 'editedAt'])
+              && request.resource.data.diff(resource.data).affectedKeys().hasAll(['ct', 'iv', 'editedAt'])
+              && isSealed(request.resource.data, 12000)
+              && request.resource.data.editedAt == request.time));
       }
     }
   }

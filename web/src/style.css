@@ -620,3 +620,20 @@ button.link.inline {
   font-size: 0.85rem;
   color: var(--danger);
 }
+
+button.danger {
+  background: var(--danger);
+  color: var(--card);
+}
+
+.message.ok {
+  color: var(--ink);
+}
+
+.letter .edit-form textarea {
+  width: 100%;
+}
+
+.letter button.link.inline {
+  margin-top: 4px;
+}

@@ -81,7 +81,7 @@ side   = (myPair == p1) ? "a" : "b"
 | `invites/{code}` | alias, used, createdAt, usedAt, roomId, roomDeletedAt | 운영자: 읽기, 만들기(코드 형식·필드 검사), 별칭 고치기, 안 쓴 코드 지우기. 사용 처리는 Worker |
 | `config/admins` | emails (소문자 이메일 배열) | 아무도 못 씀(콘솔에서만). 규칙과 Worker가 운영자 판별에 사용 |
 | `rooms/{roomId}` | createdAt, inviteCode, lastLetterAt, knownDevices(수), contacts.a / contacts.b `{ct, iv, updatedAt}`, settings `{ct, iv}` | 해당 방 토큰: 읽기, 자기 side 연락처·settings 수정. 운영자: 메타 읽기·삭제 |
-| `rooms/{roomId}/letters/{id}` | from(a/b), ct, iv, sentAt, readAt | 해당 방 토큰. 생성 시 `from == token.side`, `sentAt == request.time`. `readAt`은 받는 쪽만 한 번 설정. 수정·삭제 불가 |
+| `rooms/{roomId}/letters/{id}` | from(a/b), ct, iv, sentAt, readAt, editedAt(고친 경우) | 해당 방 토큰. 생성 시 `from == token.side`, `sentAt == request.time`. `readAt`은 받는 쪽만 한 번 설정. 보낸 쪽만 `ct`·`iv`·`editedAt` 수정 가능(`editedAt == request.time`). 삭제 불가 |
 | `rooms/{roomId}/devices/{deviceId}` | side, fcmToken, firstSeen, lastSeen | 클라이언트 전면 차단 (Worker만) |
 | `lockouts/{key}` | fails, windowStart, lockedUntil, strikes | 클라이언트 전면 차단 (Worker만) |
 

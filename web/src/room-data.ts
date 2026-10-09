@@ -45,6 +45,7 @@ export interface LetterView {
   text: string | null;
   sentAt: Date;
   readAt: Date | null;
+  editedAt: Date | null;
   pending: boolean;
 }
 
@@ -103,7 +104,7 @@ export function watchRoom(
   );
 }
 
-/** 최근 편지 limit 개를 오래된 것부터. 편지 내용은 바뀌지 않으므로 복호화 결과를 캐시한다. */
+/** 최근 편지 limit 개를 오래된 것부터. 복호화 결과는 (편지, iv) 별로 캐시한다. 고치면 iv 가 새로 바뀐다. */
 export function watchLetters(
   session: Session,
   limit: number,
@@ -112,12 +113,13 @@ export function watchLetters(
 ): Unsubscribe {
   const cache = new Map<string, Promise<string | null>>();
   const decrypt = (id: string, data: DocumentData) => {
-    let text = cache.get(id);
+    const key = `${id}:${data.iv}`;
+    let text = cache.get(key);
     if (!text) {
       text = openOrNull<{ text: string }>(session.encKey, data as Sealed, letterContext(id, data.from)).then(
         (body) => body?.text ?? null,
       );
-      cache.set(id, text);
+      cache.set(key, text);
     }
     return text;
   };
@@ -138,6 +140,7 @@ export function watchLetters(
             text: await decrypt(d.id, data),
             sentAt: toDate(data.sentAt),
             readAt: data.readAt ? toDate(data.readAt) : null,
+            editedAt: data.editedAt ? toDate(data.editedAt) : null,
             pending: d.metadata.hasPendingWrites,
           };
         }),
@@ -169,6 +172,12 @@ export async function sendLetter(session: Session, text: string): Promise<void> 
   batch.set(ref, { from: session.side, ...sealed, sentAt: serverTimestamp(), readAt: null });
   batch.update(roomRef(session), { lastLetterAt: serverTimestamp() });
   await batch.commit();
+}
+
+/** 내가 보낸 편지의 내용을 고친다. 같은 자리(context)로 다시 암호화하고 고친 시각을 남긴다. */
+export async function editLetter(session: Session, letterId: string, text: string): Promise<void> {
+  const sealed = await seal(session.encKey, { text }, letterContext(letterId, session.side));
+  await updateDoc(doc(db, 'rooms', session.roomId, 'letters', letterId), { ...sealed, editedAt: serverTimestamp() });
 }
 
 export async function markRead(session: Session, letterId: string): Promise<void> {

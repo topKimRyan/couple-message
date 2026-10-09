@@ -169,10 +169,29 @@ describe('편지', () => {
     await assertFails(updateDoc(ref(as('b')), { readAt: serverTimestamp() }));
   });
 
-  it('편지는 고치거나 지울 수 없다', async () => {
-    const ref = doc(as('b'), 'rooms', ROOM, 'letters', 'fromA');
-    await assertFails(updateDoc(ref, { ct: 'AAAA', readAt: serverTimestamp() }));
-    await assertFails(deleteDoc(ref));
+  it('보낸 사람만 내용을 고친다', async () => {
+    const ref = (db: Firestore) => doc(db, 'rooms', ROOM, 'letters', 'fromA');
+    const edit = { ...sealed, editedAt: serverTimestamp() };
+    await assertFails(updateDoc(ref(as('b')), edit));
+    await assertFails(updateDoc(ref(as('a', OTHER)), edit));
+    await assertSucceeds(updateDoc(ref(as('a')), edit));
+    await assertSucceeds(updateDoc(ref(as('a')), edit));
+  });
+
+  it('고칠 때 다른 필드, 위조 시각, 평문, 큰 내용은 거부', async () => {
+    const ref = doc(as('a'), 'rooms', ROOM, 'letters', 'fromA');
+    const edit = { ...sealed, editedAt: serverTimestamp() };
+    await assertFails(updateDoc(ref, { ...edit, readAt: serverTimestamp() }));
+    await assertFails(updateDoc(ref, { ...edit, from: 'b' }));
+    await assertFails(updateDoc(ref, { ...edit, text: '안녕' }));
+    await assertFails(updateDoc(ref, { ...edit, editedAt: Timestamp.fromMillis(0) }));
+    await assertFails(updateDoc(ref, { ...edit, ct: 'x'.repeat(12001) }));
+    await assertFails(updateDoc(ref, { ...edit, iv: 'short' }));
+    await assertFails(updateDoc(ref, { ct: sealed.ct }));
+  });
+
+  it('편지는 지울 수 없다', async () => {
+    await assertFails(deleteDoc(doc(as('b'), 'rooms', ROOM, 'letters', 'fromA')));
     await assertFails(deleteDoc(doc(as('a'), 'rooms', ROOM, 'letters', 'fromA')));
   });
 });

@@ -1,4 +1,4 @@
-import { formatDateTime, relativeTime } from '../format';
+import { formatDateTime, preview, relativeTime } from '../format';
 import { LETTER_MAX, editLetter, notifyPartner, sendLetter, type LetterView } from '../room-data';
 import type { Session } from '../session';
 import { el } from './dom';
@@ -31,6 +31,8 @@ export function createLetters(session: Session, { onMore }: Options) {
   // 이번 방문에서 처음 읽은 편지는 "새 편지"로 강조해 둔다.
   const fresh = new Set<string>();
   let lastId: string | undefined;
+  // 긴 지난 편지는 앞부분만 보이게 접어 둔다. 눌러서 펼친 편지.
+  const opened = new Set<string>();
   let lastLetters: LetterView[] = [];
   let lastHasMore = false;
   // 고치는 중인 편지. 목록이 다시 그려져도 쓰던 내용이 남도록 여기에 둔다.
@@ -117,6 +119,36 @@ export function createLetters(session: Session, { onMore }: Options) {
     return form;
   }
 
+  function body(letter: LetterView, text: string, isFresh: boolean): HTMLElement {
+    const short = preview(text);
+    // 짧은 편지, 맨 마지막 편지, 새 편지는 늘 펼쳐 둔다.
+    if (short === null || isFresh || letter.id === lastLetters.at(-1)?.id) {
+      return el('p', { className: 'letter-text', textContent: text });
+    }
+    const isOpen = opened.has(letter.id);
+    const toggle = () => {
+      if (isOpen) opened.delete(letter.id);
+      else opened.add(letter.id);
+      render();
+    };
+    const node = el('p', {
+      className: `letter-text foldable${isOpen ? '' : ' folded'}`,
+      textContent: isOpen ? text : short,
+      tabIndex: 0,
+      title: isOpen ? '눌러서 접기' : '눌러서 펼치기',
+      onclick: toggle,
+      onkeydown: (event: KeyboardEvent) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggle();
+        }
+      },
+    });
+    node.setAttribute('role', 'button');
+    node.setAttribute('aria-expanded', String(isOpen));
+    return node;
+  }
+
   function item(letter: LetterView): HTMLElement {
     const mine = letter.from === session.side;
     const status = mine
@@ -139,7 +171,7 @@ export function createLetters(session: Session, { onMore }: Options) {
         ? editor(letter)
         : letter.text === null
           ? el('p', { className: 'empty', textContent: '이 편지는 열 수 없어요.' })
-          : el('p', { className: 'letter-text', textContent: letter.text }),
+          : body(letter, letter.text, isFresh),
       el(
         'div',
         { className: 'letter-foot' },

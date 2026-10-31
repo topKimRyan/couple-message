@@ -512,6 +512,21 @@ button.link.inline {
   white-space: nowrap;
 }
 
+/* 접어 둔 긴 편지: 눌러서 펼치고 접는다 */
+.letter-text.foldable {
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.letter-text.foldable:focus-visible {
+  outline: 2px solid var(--muted);
+  outline-offset: 2px;
+}
+
+.letter-text.folded {
+  color: var(--muted);
+}
+
 .letter .meta {
   text-align: right;
   line-height: 1.4;

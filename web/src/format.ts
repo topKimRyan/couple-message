@@ -22,3 +22,12 @@ export function formatDateTime(date: Date, now = new Date()): string {
   const day = sameYear ? `${date.getMonth() + 1}월 ${date.getDate()}일` : formatDate(date);
   return `${day} ${time}`;
 }
+
+/** 접힌 편지에 보일 앞부분. 줄 수나 글자 수를 넘으면 잘라 "…"을 붙이고, 짧으면 null. */
+export function preview(text: string, maxLines = 2, maxChars = 60): string | null {
+  const lines = text.split('\n');
+  let head = lines.slice(0, maxLines).join('\n');
+  if (head.length > maxChars) head = head.slice(0, maxChars);
+  if (head === text) return null;
+  return `${head.trimEnd()}…`;
+}

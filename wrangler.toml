@@ -10,6 +10,9 @@ directory = "./web/dist"
 # /api 로 시작하는 요청만 Worker 코드로, 나머지는 화면 파일로. (/admin 은 admin.html 로 자동 연결)
 run_worker_first = ["/api/*"]
 
+# main 이 아닌 브랜치에 push 하면 Cloudflare 는 npx wrangler preview 로 미리보기를 만든다. 그 명령은 이 블록이 있어야 돈다(비어 있어도 된다).
+[previews]
+
 [observability]
 enabled = true
 
